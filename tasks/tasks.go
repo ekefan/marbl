@@ -83,8 +83,7 @@ func (t *Task) Transition(next TaskState) error {
 	return nil
 }
 
-// Reconstitute rebuilds a Task from persisted data (e.g. loaded from DB).
-// It skips state validation since the data is already trusted storage.
+// Reconstitute rebuilds a Task from persisted data
 func Reconstitute(id int64, taskType TaskType, value TaskValue, state TaskState, createdAt, updatedAt time.Time) (*Task, error) {
 	if err := validateTaskType(taskType); err != nil {
 		return nil, err
