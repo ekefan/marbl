@@ -56,3 +56,7 @@ Reaons:
     - slog give structured JSON logs natively
     - no external dep needed(zerolog/zap would be a nice alternative)
     - Configurable handlers for console vs JSON at runtime
+
+
+
+---How would backlog be handled with gRPC?
