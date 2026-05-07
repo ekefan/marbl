@@ -9,9 +9,9 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/lib/pq"
 
 	"github.com/ekefan/marbl/contracts"
 	"github.com/ekefan/marbl/storage/generated"
@@ -60,7 +60,6 @@ func NewPostgresRepository(dsn string) (*PostgresRepository, error) {
 	}, nil
 }
 
-
 func (r *PostgresRepository) RunMigrations(dsn string, migrationsPath string) error {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -87,10 +86,6 @@ func (r *PostgresRepository) RunMigrations(dsn string, migrationsPath string) er
 func (r *PostgresRepository) Close() error {
 	r.db.Close()
 	return nil
-}
-
-func (r *PostgresRepository) DB() *pgxpool.Pool{
-	return r.db
 }
 
 func (r *PostgresRepository) Create(ctx context.Context, taskType tasks.TaskType, value tasks.TaskValue) (*tasks.Task, error) {

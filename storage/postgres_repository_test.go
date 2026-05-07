@@ -1,4 +1,4 @@
-package storage_test
+package storage
 
 import (
 	"context"
@@ -12,12 +12,10 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-
-	"github.com/ekefan/marbl/storage"
 	"github.com/ekefan/marbl/tasks"
 )
 
-var testRepo *storage.PostgresRepository
+var testRepo *PostgresRepository
 
 func migrationsPath() string {
 	_, filename, _, _ := runtime.Caller(0)
@@ -57,7 +55,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	repo, err := storage.NewPostgresRepository(dsn)
+	repo, err := NewPostgresRepository(dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +76,7 @@ func TestMain(m *testing.M) {
 func resetDB(t *testing.T, ctx context.Context) {
 	t.Helper()
 
-	_, err := testRepo.DB().Exec(
+	_, err := testRepo.db.Exec(
 		ctx,
 		`TRUNCATE TABLE tasks RESTART IDENTITY CASCADE`,
 	)
