@@ -98,7 +98,6 @@ func run(cfgPath string) error {
 	producer := orchestration.NewProducer(
 		repo,
 		pub,
-		pub, // Publisher also implements QueueDepthChecker
 		orchestration.ProducerConfig{
 			MaxBacklog: cfg.Producer.MaxBacklog,
 			Rate:       cfg.Producer.RatePerSecond,
