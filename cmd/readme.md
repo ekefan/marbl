@@ -1,0 +1,6 @@
+Key decisions worth flagging for the interview:
+buildLogger is duplicated across both mains — intentional. Both are independent binaries. Extracting it to a shared package would create a dependency just for a 15-line function. The duplication cost is lower than the coupling cost.
+Consumer does not run migrations — only the producer runs RunMigrations. One service owns the schema lifecycle. If both ran migrations concurrently on startup you'd get a race on the schema_migrations lock table. This is a conscious design decision worth mentioning.
+OnProcessing / OnDone hooks wire metrics without importing prometheus into orchestration — the orchestration package stays clean with zero observability dependencies. The cmd layer owns the wiring between domain events and metrics. This is the dependency inversion in practice.
+signal.NotifyContext — handles SIGINT and SIGTERM. When docker sends SIGTERM on docker stop, the context cancels, the subscriber's Serve loop exits cleanly, the metrics server shuts down gracefully. No zombie processes.
+ErrMaxBacklogReached exits with code 0 — it's not a crash, it's a planned stop. os.Exit(1) is reserved for actual errors. This matters for docker-compose restart policies and monitoring.

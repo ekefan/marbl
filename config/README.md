@@ -1,0 +1,6 @@
+Key decisions worth flagging:
+Config — env vars override file values — PRODUCER_DATABASE_DSN overrides database.dsn in the yaml. The SetEnvKeyReplacer maps dots to underscores so the nesting maps cleanly. This is the standard 12-factor pattern — works naturally with docker-compose environment: blocks.
+Two separate viper instances — producer and consumer have isolated viper instances with different env prefixes. No shared global state, no risk of one service's config leaking into the other's.
+validate() is called inside Load* — config is either valid or it never leaves the loader. The rest of the app never needs to check for empty DSNs or zero values.
+Metrics use injected registries not prometheus.DefaultRegisterer — the default registry is a global. Tests using it leak state between runs and fight each other. Each test gets a prometheus.NewRegistry() — completely isolated. This is the correct pattern for testing prometheus instrumentation.
+NewServer takes a prometheus.Gatherer not a Registerer — the server only needs to read metrics, not register them. Accepting the narrower interface is more correct and makes it easier to test with a custom registry.

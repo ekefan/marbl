@@ -1,0 +1,149 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/ekefan/marbl/config"
+	"github.com/ekefan/marbl/metrics"
+	"github.com/ekefan/marbl/orchestration"
+	"github.com/ekefan/marbl/storage"
+	"github.com/ekefan/marbl/transport"
+)
+
+// version is injected at build time:
+// go build -ldflags="-s -w -X main.version=$(git describe --tags --always)" ./cmd/producer
+var version = "dev"
+
+func main() {
+	cfgPath := flag.String("config", "cmd/producer/config.yaml", "path to config file")
+	versionFlag := flag.Bool("version", false, "print build version and exit")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
+	if err := run(*cfgPath); err != nil {
+		if errors.Is(err, orchestration.ErrMaxBacklogReached) {
+			slog.Info("producer finished: max backlog reached")
+			os.Exit(0)
+		}
+		slog.Error("producer exited with error", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+}
+
+func run(cfgPath string) error {
+	cfg, err := config.LoadProducer(cfgPath)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	logger := buildLogger(cfg.Logging)
+	slog.SetDefault(logger)
+	logger.Info("starting producer", slog.String("version", version))
+
+	// --- metrics ---
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(prometheus.NewGoCollector())
+	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+
+	prodMetrics, err := metrics.NewProducerMetrics(reg)
+	if err != nil {
+		return fmt.Errorf("init metrics: %w", err)
+	}
+
+	metricsSrv := metrics.NewServer(cfg.Metrics.Addr(), reg, logger)
+	metricsSrv.Start()
+
+	// --- pprof ---
+	go func() {
+		logger.Info("pprof listening", slog.String("addr", cfg.Profiling.Addr()))
+		if err := http.ListenAndServe(cfg.Profiling.Addr(), nil); err != nil {
+			logger.Error("pprof server error", slog.String("error", err.Error()))
+		}
+	}()
+
+	// --- storage ---
+	repo, err := storage.NewPostgresRepository(cfg.Database.DSN)
+	if err != nil {
+		return fmt.Errorf("connect to postgres: %w", err)
+	}
+	defer repo.Close()
+
+	if err := repo.RunMigrations(cfg.Database.DSN, cfg.Database.MigrationsPath); err != nil {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+
+	// --- transport ---
+	pub, err := transport.NewPublisher(transport.PublisherConfig{
+		DSN:       cfg.RabbitMQ.DSN,
+		QueueName: cfg.RabbitMQ.QueueName,
+		Logger:    logger,
+	})
+	if err != nil {
+		return fmt.Errorf("connect to rabbitmq: %w", err)
+	}
+	defer pub.Close()
+
+	// --- orchestration ---
+	producer := orchestration.NewProducer(
+		repo,
+		pub,
+		pub, // Publisher also implements QueueDepthChecker
+		orchestration.ProducerConfig{
+			MaxBacklog: cfg.Producer.MaxBacklog,
+			Rate:       cfg.Producer.RatePerSecond,
+			Logger:     logger,
+			OnProduce: func() {
+				prodMetrics.TasksProduced.Inc()
+			},
+		},
+	)
+
+	// --- graceful shutdown ---
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	runErr := producer.Run(ctx)
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = metricsSrv.Shutdown(shutdownCtx)
+
+	return runErr
+}
+
+func buildLogger(cfg config.LoggingConfig) *slog.Logger {
+	var level slog.Level
+	switch cfg.Level {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	opts := &slog.HandlerOptions{Level: level}
+
+	if cfg.Format == "json" {
+		return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	}
+	return slog.New(slog.NewTextHandler(os.Stdout, opts))
+}

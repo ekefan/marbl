@@ -1,0 +1,21 @@
+database:
+  dsn: "postgres://marbl:marbl@localhost:5432/marbl?sslmode=disable"
+  migrations_path: "file://storage/migrations"
+
+rabbitmq:
+  dsn: "amqp://guest:guest@localhost:5672/"
+  queue_name: "tasks"
+
+producer:
+  rate_per_second: 2
+  max_backlog: 50
+
+metrics:
+  port: 9091
+
+profiling:
+  port: 6061
+
+logging:
+  level: "debug"
+  format: "console"
