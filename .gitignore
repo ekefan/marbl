@@ -1,1 +1,4 @@
-bin/.env
+bin/
+
+*.env**
+.environment_variable
