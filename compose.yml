@@ -41,7 +41,7 @@ services:
       args:
         VERSION: ${VERSION:-dev}
     restart: "no"   # producer exits cleanly at max backlog
-    env_file: .env
+    env_file: .environment_variable
     ports:
       - "9091:9091"   # metrics
       - "6061:6061"   # pprof
@@ -58,7 +58,7 @@ services:
       args:
         VERSION: ${VERSION:-dev}
     restart: unless-stopped
-    env_file: .env
+    env_file: .environment_variable
     ports:
       - "9092:9092"   # metrics
       - "6062:6062"   # pprof
