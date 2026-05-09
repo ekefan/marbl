@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/ekefan/marbl/config"
 	"github.com/ekefan/marbl/metrics"
@@ -56,10 +57,10 @@ func run(cfgPath string) error {
 	slog.SetDefault(logger)
 	logger.Info("starting producer", slog.String("version", version))
 
-	// --- metrics ---
+	
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(prometheus.NewGoCollector())
-	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	reg.MustRegister(collectors.NewGoCollector())
+	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
 	prodMetrics, err := metrics.NewProducerMetrics(reg)
 	if err != nil {
@@ -68,8 +69,8 @@ func run(cfgPath string) error {
 
 	metricsSrv := metrics.NewServer(cfg.Metrics.Addr(), reg, logger)
 	metricsSrv.Start()
+	logger.Info("prometheus metric server listening", slog.String("addr", cfg.Metrics.Addr()))
 
-	// --- pprof ---
 	go func() {
 		logger.Info("pprof listening", slog.String("addr", cfg.Profiling.Addr()))
 		if err := http.ListenAndServe(cfg.Profiling.Addr(), nil); err != nil {
@@ -77,18 +78,13 @@ func run(cfgPath string) error {
 		}
 	}()
 
-	// --- storage ---
+	
 	repo, err := storage.NewPostgresRepository(cfg.Database.DSN)
 	if err != nil {
 		return fmt.Errorf("connect to postgres: %w", err)
 	}
 	defer repo.Close()
 
-	if err := repo.RunMigrations(cfg.Database.DSN, cfg.Database.MigrationsPath); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
-	}
-
-	// --- transport ---
 	pub, err := transport.NewPublisher(transport.PublisherConfig{
 		DSN:       cfg.RabbitMQ.DSN,
 		QueueName: cfg.RabbitMQ.QueueName,
@@ -99,7 +95,6 @@ func run(cfgPath string) error {
 	}
 	defer pub.Close()
 
-	// --- orchestration ---
 	producer := orchestration.NewProducer(
 		repo,
 		pub,
@@ -115,6 +110,7 @@ func run(cfgPath string) error {
 	)
 
 	// --- graceful shutdown ---
+	// --- Handle running workers
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
