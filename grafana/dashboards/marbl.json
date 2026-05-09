@@ -1,0 +1,137 @@
+{
+  "title": "Marbl Task Pipeline",
+  "uid": "marbl-pipeline",
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Tasks by State",
+      "description": "Number of tasks currently in each state: received, processing, done",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "marbl_consumer_tasks_processing",
+          "legendFormat": "processing"
+        },
+        {
+          "expr": "marbl_consumer_tasks_done_total",
+          "legendFormat": "done"
+        },
+        {
+          "expr": "marbl_producer_tasks_produced_total - marbl_consumer_tasks_done_total - marbl_consumer_tasks_processing",
+          "legendFormat": "received"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 }
+        }
+      }
+    },
+
+    {
+      "id": 2,
+      "title": "Service Health",
+      "description": "Whether producer and consumer are reachable (1 = up, 0 = down)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "up{job=\"producer\"}",
+          "legendFormat": "Producer"
+        },
+        {
+          "expr": "up{job=\"consumer\"}",
+          "legendFormat": "Consumer"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } },
+            { "type": "value", "options": { "1": { "text": "UP",   "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+
+    {
+      "id": 3,
+      "title": "Total Value Sum per Task Type",
+      "description": "Running sum of task values grouped by task type (consumer)",
+      "type": "bargauge",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "marbl_consumer_value_sum_by_type",
+          "legendFormat": "Type {{task_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": 0 }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      }
+    },
+
+    {
+      "id": 4,
+      "title": "Processed Tasks per Task Type",
+      "description": "Total completed task count grouped by task type (consumer)",
+      "type": "bargauge",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "marbl_consumer_tasks_processed_by_type_total",
+          "legendFormat": "Type {{task_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": 0 }]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      }
+    }
+
+  ],
+
+  "schemaVersion": 38,
+  "tags": ["marbl", "tasks"],
+  "timezone": "browser"
+}
