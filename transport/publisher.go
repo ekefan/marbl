@@ -13,13 +13,10 @@ import (
 	"github.com/ekefan/marbl/tasks"
 )
 
-// compile-time contract check
 var _ contracts.TaskPublisher = (*Publisher)(nil)
 var _ contracts.QueueDepthChecker = (*Publisher)(nil)
 
-// taskMessage is the wire format for tasks over RabbitMQ.
-// Keeping it separate from the domain type means the domain
-// is never coupled to serialisation concerns.
+// taskMessage is the wire(payload) format for tasks over RabbitMQ.
 type taskMessage struct {
 	ID    int64  `json:"id"`
 	Type  int    `json:"type"`
@@ -28,7 +25,6 @@ type taskMessage struct {
 }
 
 // Publisher sends tasks to RabbitMQ and confirms broker receipt.
-// It uses publisher confirms — Publish blocks until the broker acks.
 type Publisher struct {
 	conn      *amqp.Connection
 	ch        *amqp.Channel
@@ -110,10 +106,10 @@ func (p *Publisher) Publish(ctx context.Context, task *tasks.Task) error {
 	// that we wait on — this is the broker ack, not the consumer ack.
 	confirmation, err := p.ch.PublishWithDeferredConfirmWithContext(
 		ctx,
-		"",            // default exchange — routes directly to queue by name
+		"", // default exchange — routes directly to queue by name
 		p.queueName,
-		true,          // mandatory: error if no queue can accept the message
-		false,         // immediate: not supported in modern RabbitMQ
+		true,  // mandatory: error if no queue can accept the message
+		false, // immediate: not supported in modern RabbitMQ
 		amqp.Publishing{
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent, // survives broker restart

@@ -161,7 +161,6 @@ func TestSubscriber_StopsOnContextCancel(t *testing.T) {
 	}
 }
 
-
 func TestRoundtrip_QueueDepthDecreasesAfterConsume(t *testing.T) {
 	purgeQueue(t)
 	pub := newPublisher(t)

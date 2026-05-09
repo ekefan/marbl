@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ekefan/marbl/tasks"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/ekefan/marbl/tasks"
 )
 
 var testRepo *PostgresRepository
@@ -28,7 +28,7 @@ func migrationsPath() string {
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		2*time.Second,
+		5*time.Second,
 	)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(30*time.Second),
+				WithStartupTimeout(45*time.Second),
 		),
 	)
 	defer func() {

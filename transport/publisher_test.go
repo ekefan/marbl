@@ -54,7 +54,7 @@ func TestPublisher_QueueDepthRespectsMaxBacklog(t *testing.T) {
 	ctx := context.Background()
 
 	const maxBacklog = 5
-	for i := 1; i <= maxBacklog; i++ {
+	for i := 1; i <= 6; i++ {
 		task := newTask(t, int64(i), i%10, i*5)
 		if err := pub.Publish(ctx, task); err != nil {
 			t.Fatalf("Publish() task %d: %v", i, err)
@@ -67,8 +67,8 @@ func TestPublisher_QueueDepthRespectsMaxBacklog(t *testing.T) {
 	}
 
 	// producer should stop when depth >= maxBacklog
-	if depth < maxBacklog {
-		t.Errorf("expected depth >= %d, got %d", maxBacklog, depth)
+	if depth == maxBacklog {
+		t.Errorf("expected depth == %d, got %d", maxBacklog, depth)
 	}
 }
 

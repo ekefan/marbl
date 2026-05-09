@@ -17,7 +17,6 @@ import (
 
 const testQueue = "test_tasks"
 
-// brokerDSN is set once in TestMain and shared across all test files.
 var brokerDSN string
 
 func TestMain(m *testing.M) {
@@ -57,8 +56,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// --- shared test helpers ---
-
 func newPublisher(t *testing.T) *transport.Publisher {
 	t.Helper()
 	pub, err := transport.NewPublisher(transport.PublisherConfig{
@@ -95,8 +92,6 @@ func newTask(t *testing.T, id int64, typ int, val int) *tasks.Task {
 	return task
 }
 
-// purgeQueue drains all messages from the queue between tests
-// so each test starts with a clean slate.
 func purgeQueue(t *testing.T) {
 	t.Helper()
 	pub := newPublisher(t)
