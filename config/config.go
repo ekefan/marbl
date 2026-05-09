@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ProducerConfig is the full configuration for the producer service.
 type ProducerConfig struct {
 	Database   DatabaseConfig   `mapstructure:"database"`
 	RabbitMQ   RabbitMQConfig   `mapstructure:"rabbitmq"`
@@ -17,7 +16,6 @@ type ProducerConfig struct {
 	Producer   ProducerSettings `mapstructure:"producer"`
 }
 
-// ConsumerConfig is the full configuration for the consumer service.
 type ConsumerConfig struct {
 	Database  DatabaseConfig   `mapstructure:"database"`
 	RabbitMQ  RabbitMQConfig   `mapstructure:"rabbitmq"`
@@ -27,20 +25,16 @@ type ConsumerConfig struct {
 	Consumer  ConsumerSettings `mapstructure:"consumer"`
 }
 
-// DatabaseConfig holds postgres connection settings.
 type DatabaseConfig struct {
 	DSN             string `mapstructure:"dsn"`
 	MigrationsPath  string `mapstructure:"migrations_path"`
 }
 
-// RabbitMQConfig holds broker connection and queue settings.
 type RabbitMQConfig struct {
 	DSN       string `mapstructure:"dsn"`
 	QueueName string `mapstructure:"queue_name"`
 }
 
-// MetricsConfig holds prometheus exposure settings.
-// Endpoint is fixed to /metrics per the spec.
 type MetricsConfig struct {
 	Port int `mapstructure:"port"`
 }
@@ -49,7 +43,6 @@ func (m MetricsConfig) Addr() string {
 	return fmt.Sprintf(":%d", m.Port)
 }
 
-// ProfilingConfig holds pprof server settings.
 type ProfilingConfig struct {
 	Port int `mapstructure:"port"`
 }
@@ -58,7 +51,6 @@ func (p ProfilingConfig) Addr() string {
 	return fmt.Sprintf(":%d", p.Port)
 }
 
-// LoggingConfig controls log level and format.
 type LoggingConfig struct {
 	// Level: debug, info, warn, error
 	Level string `mapstructure:"level"`
@@ -66,7 +58,6 @@ type LoggingConfig struct {
 	Format string `mapstructure:"format"`
 }
 
-// ProducerSettings holds producer-specific runtime settings.
 type ProducerSettings struct {
 	// RatePerSecond is how many tasks to generate per second.
 	RatePerSecond int `mapstructure:"rate_per_second"`
@@ -75,7 +66,6 @@ type ProducerSettings struct {
 	MaxBacklog int64 `mapstructure:"max_backlog"`
 }
 
-// ConsumerSettings holds consumer-specific runtime settings.
 type ConsumerSettings struct {
 	// RateLimit is the maximum number of tasks processed per second.
 	RateLimit int `mapstructure:"rate_limit"`
@@ -92,7 +82,7 @@ func LoadProducer(cfgPath string) (*ProducerConfig, error) {
 	v := newViper("PRODUCER")
 	setProducerDefaults(v)
 
-	if err := loadFile(v, cfgPath); err != nil {
+	if err := loadCfgFile(v, cfgPath); err != nil {
 		return nil, err
 	}
 
@@ -114,7 +104,7 @@ func LoadConsumer(cfgPath string) (*ConsumerConfig, error) {
 	v := newViper("CONSUMER")
 	setConsumerDefaults(v)
 
-	if err := loadFile(v, cfgPath); err != nil {
+	if err := loadCfgFile(v, cfgPath); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +120,6 @@ func LoadConsumer(cfgPath string) (*ConsumerConfig, error) {
 	return &cfg, nil
 }
 
-// --- validation ---
 
 func (c *ProducerConfig) validate() error {
 	if c.Database.DSN == "" {
@@ -175,7 +164,7 @@ func newViper(envPrefix string) *viper.Viper {
 	return v
 }
 
-func loadFile(v *viper.Viper, cfgPath string) error {
+func loadCfgFile(v *viper.Viper, cfgPath string) error {
 	if cfgPath == "" {
 		return nil
 	}

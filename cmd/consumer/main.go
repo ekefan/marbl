@@ -22,9 +22,8 @@ import (
 	"github.com/ekefan/marbl/transport"
 )
 
-// version is injected at build time:
 // go build -ldflags="-s -w -X main.version=$(git describe --tags --always)" ./cmd/consumer
-var version = "dev"
+var version = "dev_take_home"
 
 func main() {
 	cfgPath := flag.String("config", "cmd/consumer/config.yaml", "path to config file")

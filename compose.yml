@@ -1,8 +1,4 @@
-version: "3.9"
-
 services:
-
-  # ── Infrastructure ───────────────────────────────────────────────────────────
 
   postgres:
     image: postgres:16-alpine
@@ -38,15 +34,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Services ─────────────────────────────────────────────────────────────────
-
   producer:
     build:
       context: .
       dockerfile: Dockerfile.producer
       args:
         VERSION: ${VERSION:-dev}
-    restart: "no"   # producer exits cleanly at max backlog — don't restart
+    restart: "no"   # producer exits cleanly at max backlog
     env_file: .env
     ports:
       - "9091:9091"   # metrics
@@ -73,8 +67,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-
-  # ── Observability ─────────────────────────────────────────────────────────────
 
   prometheus:
     image: prom/prometheus:v2.51.0
