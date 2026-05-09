@@ -13,14 +13,14 @@ import (
 // ProducerConfig holds all runtime configuration for the producer.
 type ProducerConfig struct {
 	// MaxBacklog is the maximum number of unprocessed messages allowed
-	// in the broker queue before the producer stops publishing.
+	// in the system before the producer stops publishing.
 	MaxBacklog int64
 
 	// Rate is how many tasks to produce per second.
 	Rate int
 
 	// OnProduce is an optional hook called after each successful publish.
-	// Use this to increment prometheus counters without importing metrics
+	// Currently being used to increment prometheus counters without importing metrics
 	// into the orchestration package.
 	OnProduce func()
 
