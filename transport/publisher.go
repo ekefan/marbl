@@ -14,6 +14,7 @@ import (
 )
 
 var _ contracts.TaskPublisher = (*Publisher)(nil)
+var _ contracts.QueueDepthChecker = (*Publisher)(nil)
 
 // taskMessage is the wire(payload) format for tasks over RabbitMQ.
 type taskMessage struct {
