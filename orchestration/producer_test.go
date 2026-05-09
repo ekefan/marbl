@@ -10,7 +10,7 @@ import (
 )
 
 func newProducer(repo *mockRepo, pub *mockPublisher, maxBacklog int64, rate int) *orchestration.Producer {
-	return orchestration.NewProducer(repo, pub, pub, orchestration.ProducerConfig{
+	return orchestration.NewProducer(repo, pub, orchestration.ProducerConfig{
 		MaxBacklog: maxBacklog,
 		Rate:       rate,
 	})

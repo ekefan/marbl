@@ -14,7 +14,6 @@ import (
 )
 
 var _ contracts.TaskPublisher = (*Publisher)(nil)
-var _ contracts.QueueDepthChecker = (*Publisher)(nil)
 
 // taskMessage is the wire(payload) format for tasks over RabbitMQ.
 type taskMessage struct {
@@ -139,10 +138,11 @@ func (p *Publisher) Publish(ctx context.Context, task *tasks.Task) error {
 
 // QueueDepth returns the number of ready (unacked) messages in the queue.
 // Used by the producer to enforce max backlog before publishing.
+//
+// Deprecated as I inferred maxbacklog to mean task already produced in db but not yet processed
 func (p *Publisher) QueueDepth(ctx context.Context) (int64, error) {
-	// QueueInspect is a passive declare — it returns queue stats
-	// without modifying anything.
-	q, err := p.ch.QueueInspect(p.queueName)
+	q, err := p.ch.QueueDeclare(p.queueName, true, false, false, true, nil )
+
 	if err != nil {
 		return 0, fmt.Errorf("inspect queue %q: %w", p.queueName, err)
 	}

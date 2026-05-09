@@ -32,7 +32,6 @@ type ProducerConfig struct {
 type Producer struct {
 	repo      contracts.TaskRepository
 	publisher contracts.TaskPublisher
-	depth     contracts.QueueDepthChecker
 	cfg       ProducerConfig
 	logger    *slog.Logger
 }
@@ -41,7 +40,6 @@ type Producer struct {
 func NewProducer(
 	repo contracts.TaskRepository,
 	publisher contracts.TaskPublisher,
-	depth contracts.QueueDepthChecker,
 	cfg ProducerConfig,
 ) *Producer {
 	logger := cfg.Logger
@@ -52,7 +50,6 @@ func NewProducer(
 	return &Producer{
 		repo:      repo,
 		publisher: publisher,
-		depth:     depth,
 		cfg:       cfg,
 		logger:    logger,
 	}
@@ -66,7 +63,6 @@ func (p *Producer) Run(ctx context.Context) error {
 	if p.cfg.Rate <= 0 {
 		p.cfg.Rate = 1
 	}
-
 	interval := time.Second / time.Duration(p.cfg.Rate)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -92,20 +88,21 @@ func (p *Producer) Run(ctx context.Context) error {
 
 // produce performs one task generation cycle:
 // 1. check backlog — stop if at limit
-// 2. generate random type + value
+// 2. generate random type(0-9) & value(0 - 99)
 // 3. persist to DB in received state
 // 4. publish to broker
 func (p *Producer) produce(ctx context.Context) error {
-	depth, err := p.depth.QueueDepth(ctx)
+	counts, err := p.repo.CountByState(ctx)
 	if err != nil {
-		p.logger.Warn("failed to check queue depth", slog.String("error", err.Error()))
-		// non-fatal — skip this tick rather than crash
+		p.logger.Warn("failed_backlog_check", slog.String("error", err.Error()))
 		return nil
 	}
 
-	if depth >= p.cfg.MaxBacklog {
+	currentBacklog := counts[tasks.StateReceived] + counts[tasks.StateProcessing]
+
+	if currentBacklog >= p.cfg.MaxBacklog {
 		p.logger.Info("max backlog reached, producer stopping",
-			slog.Int64("depth", depth),
+			slog.Int64("currentBacklog", currentBacklog),
 			slog.Int64("max_backlog", p.cfg.MaxBacklog),
 		)
 		return ErrMaxBacklogReached
@@ -119,7 +116,6 @@ func (p *Producer) produce(ctx context.Context) error {
 		p.logger.Error("failed to persist task",
 			slog.String("error", err.Error()),
 		)
-		// non-fatal — skip this tick
 		return nil
 	}
 
