@@ -19,6 +19,11 @@ type ProducerConfig struct {
 	// Rate is how many tasks to produce per second.
 	Rate int
 
+	// OnProduce is an optional hook called after each successful publish.
+	// Use this to increment prometheus counters without importing metrics
+	// into the orchestration package.
+	OnProduce func()
+
 	Logger *slog.Logger
 }
 
@@ -132,6 +137,10 @@ func (p *Producer) produce(ctx context.Context) error {
 		slog.Int("task_type", int(task.Type())),
 		slog.Int("task_value", int(task.Value())),
 	)
+
+	if p.cfg.OnProduce != nil {
+		p.cfg.OnProduce()
+	}
 
 	return nil
 }

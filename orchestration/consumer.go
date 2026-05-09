@@ -21,6 +21,12 @@ type ConsumerConfig struct {
 	// Defaults to RateLimit if zero.
 	RateBurst int
 
+	// OnProcessing is called when a task moves to processing state.
+	OnProcessing func()
+
+	// OnDone is called when a task completes, with its type and value.
+	OnDone func(taskType int, value int)
+
 	Logger *slog.Logger
 }
 
@@ -112,6 +118,10 @@ func (c *Consumer) Handler() contracts.TaskHandler {
 			return err
 		}
 
+		if c.cfg.OnProcessing != nil {
+			c.cfg.OnProcessing()
+		}
+
 		// simulate work — sleep for task.Value() milliseconds
 		select {
 		case <-time.After(time.Duration(task.Value()) * time.Millisecond):
@@ -126,6 +136,10 @@ func (c *Consumer) Handler() contracts.TaskHandler {
 
 		// record per-type aggregation
 		c.stats.record(int(task.Type()), int(task.Value()))
+
+		if c.cfg.OnDone != nil {
+			c.cfg.OnDone(int(task.Type()), int(task.Value()))
+		}
 
 		// final log per task as required by the spec
 		_, sumByType := c.stats.Snapshot()
