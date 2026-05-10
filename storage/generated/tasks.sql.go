@@ -159,6 +159,7 @@ SET
     state            = $2,
     last_update_time = NOW()
 WHERE id = $1
+AND state  = 'received'
 RETURNING id, type, value, state, creation_time, last_update_time
 `
 

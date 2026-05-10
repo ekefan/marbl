@@ -60,7 +60,7 @@ func NewPostgresRepository(dsn string) (*PostgresRepository, error) {
 	}, nil
 }
 
-func (r *PostgresRepository) RunMigrations(dsn string, migrationsPath string) error {
+func (r *PostgresRepository) runMigrations(dsn string, migrationsPath string) error {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return err

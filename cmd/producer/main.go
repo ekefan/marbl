@@ -19,6 +19,7 @@ import (
 	"github.com/ekefan/marbl/config"
 	"github.com/ekefan/marbl/metrics"
 	"github.com/ekefan/marbl/orchestration"
+	"github.com/ekefan/marbl/pkg/mlogger"
 	"github.com/ekefan/marbl/storage"
 	"github.com/ekefan/marbl/transport"
 )
@@ -53,7 +54,7 @@ func run(cfgPath string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	logger := buildLogger(cfg.Logging)
+	logger := mlogger.BuildLogger(cfg.Logging)
 	slog.SetDefault(logger)
 	logger.Info("starting producer", slog.String("version", version))
 
@@ -120,25 +121,4 @@ func run(cfgPath string) error {
 	_ = metricsSrv.Shutdown(shutdownCtx)
 
 	return runErr
-}
-
-func buildLogger(cfg config.LoggingConfig) *slog.Logger {
-	var level slog.Level
-	switch cfg.Level {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
-	}
-
-	opts := &slog.HandlerOptions{Level: level}
-
-	if cfg.Format == "json" {
-		return slog.New(slog.NewJSONHandler(os.Stdout, opts))
-	}
-	return slog.New(slog.NewTextHandler(os.Stdout, opts))
 }

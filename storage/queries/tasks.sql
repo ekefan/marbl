@@ -18,6 +18,7 @@ SET
     state            = $2,
     last_update_time = NOW()
 WHERE id = $1
+AND state  = 'received'
 RETURNING *;
 
 -- name: CountByState :many

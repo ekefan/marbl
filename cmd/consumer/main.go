@@ -18,11 +18,11 @@ import (
 	"github.com/ekefan/marbl/config"
 	"github.com/ekefan/marbl/metrics"
 	"github.com/ekefan/marbl/orchestration"
+	"github.com/ekefan/marbl/pkg/mlogger"
 	"github.com/ekefan/marbl/storage"
 	"github.com/ekefan/marbl/transport"
 )
 
-// go build -ldflags="-s -w -X main.version=$(git describe --tags --always)" ./cmd/consumer
 var version = "dev_take_home"
 
 func main() {
@@ -47,11 +47,10 @@ func run(cfgPath string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	logger := buildLogger(cfg.Logging)
+	logger := mlogger.BuildLogger(cfg.Logging)
 	slog.SetDefault(logger)
 	logger.Info("starting consumer", slog.String("version", version))
 
-	// --- metrics ---
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collectors.NewGoCollector())
 	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
@@ -64,7 +63,6 @@ func run(cfgPath string) error {
 	metricsSrv := metrics.NewServer(cfg.Metrics.Addr(), reg, logger)
 	metricsSrv.Start()
 
-	// --- pprof ---
 	go func() {
 		logger.Info("pprof listening", slog.String("addr", cfg.Profiling.Addr()))
 		if err := http.ListenAndServe(cfg.Profiling.Addr(), nil); err != nil {
@@ -72,17 +70,12 @@ func run(cfgPath string) error {
 		}
 	}()
 
-	// --- storage ---
 	repo, err := storage.NewPostgresRepository(cfg.Database.DSN)
 	if err != nil {
 		return fmt.Errorf("connect to postgres: %w", err)
 	}
 	defer repo.Close()
 
-	// consumer does not run migrations — producer owns schema lifecycle
-	// if consumer starts first, it will fail to connect until postgres is ready
-
-	// --- transport ---
 	sub, err := transport.NewSubscriber(transport.SubscriberConfig{
 		DSN:       cfg.RabbitMQ.DSN,
 		QueueName: cfg.RabbitMQ.QueueName,
@@ -94,7 +87,6 @@ func run(cfgPath string) error {
 	}
 	defer sub.Close()
 
-	// --- orchestration ---
 	consumer := orchestration.NewConsumer(repo, orchestration.ConsumerConfig{
 		RateLimit: cfg.Consumer.RateLimit,
 		RateBurst: cfg.Consumer.RateBurst,
@@ -114,7 +106,6 @@ func run(cfgPath string) error {
 		},
 	})
 
-	// --- graceful shutdown ---
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -125,25 +116,4 @@ func run(cfgPath string) error {
 	_ = metricsSrv.Shutdown(shutdownCtx)
 
 	return serveErr
-}
-
-func buildLogger(cfg config.LoggingConfig) *slog.Logger {
-	var level slog.Level
-	switch cfg.Level {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
-	}
-
-	opts := &slog.HandlerOptions{Level: level}
-
-	if cfg.Format == "json" {
-		return slog.New(slog.NewJSONHandler(os.Stdout, opts))
-	}
-	return slog.New(slog.NewTextHandler(os.Stdout, opts))
 }

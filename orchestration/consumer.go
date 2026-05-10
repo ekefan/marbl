@@ -104,16 +104,12 @@ func NewConsumer(repo contracts.TaskRepository, cfg ConsumerConfig) *Consumer {
 }
 
 // Handler returns a contracts.TaskHandler that the subscriber calls per message.
-// It is safe to call concurrently — the rate limiter and stats map are both
-// goroutine-safe. gRPC prefetch may deliver multiple messages concurrently.
 func (c *Consumer) Handler() contracts.TaskHandler {
 	return func(ctx context.Context, task *tasks.Task) error {
-		// wait for a token — this is the app-side rate limit
 		if err := c.limiter.Wait(ctx); err != nil {
 			return err
 		}
 
-		// mark as processing in DB
 		if err := c.repo.UpdateState(ctx, task.ID(), tasks.StateProcessing); err != nil {
 			return err
 		}
@@ -122,14 +118,11 @@ func (c *Consumer) Handler() contracts.TaskHandler {
 			c.cfg.OnProcessing()
 		}
 
-		// simulate work — sleep for task.Value() milliseconds
 		select {
 		case <-time.After(time.Duration(task.Value()) * time.Millisecond):
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-
-		// mark as done in DB
 		if err := c.repo.UpdateState(ctx, task.ID(), tasks.StateDone); err != nil {
 			return err
 		}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ekefan/marbl/tasks"
+	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -38,11 +39,13 @@ func TestMain(m *testing.M) {
 		postgres.WithUsername("test"),
 		postgres.WithPassword("test"),
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(45*time.Second),
+			wait.ForListeningPort("5432/tcp").
+				WithStartupTimeout(90 * time.Second),
 		),
 	)
+	if err != nil {
+		panic(err)
+	}
 	defer func() {
 		_ = container.Terminate(ctx)
 	}()
@@ -62,7 +65,7 @@ func TestMain(m *testing.M) {
 
 	defer repo.Close()
 
-	if err := repo.RunMigrations(dsn, migrationsPath()); err != nil {
+	if err := repo.runMigrations(dsn, migrationsPath()); err != nil {
 		panic(err)
 	}
 
@@ -222,6 +225,17 @@ func TestUpdateState_AdvancesLastUpdateTime(t *testing.T) {
 	if !updated.LastUpdateTime().After(originalUpdate) {
 		t.Error("LastUpdateTime should advance after UpdateState")
 	}
+}
+
+func TestUpdateState_NoErrorOnCurrentStateProcessing(t *testing.T){
+	repo := testRepo
+	ctx := context.Background()
+	resetDB(t, ctx)
+
+	task, _ := repo.Create(ctx, tasks.TaskType(2), tasks.TaskValue(3))
+	_ = repo.UpdateState(ctx, task.ID(), tasks.StateProcessing)
+	err := repo.UpdateState(ctx, task.ID(), tasks.StateProcessing)
+	assert.NoError(t, err)
 }
 
 func TestUpdateState_DoesNotChangeCreationTime(t *testing.T) {
