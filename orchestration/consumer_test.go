@@ -7,6 +7,7 @@ import (
 
 	"github.com/ekefan/marbl/orchestration"
 	"github.com/ekefan/marbl/tasks"
+	"github.com/stretchr/testify/assert"
 )
 
 func newConsumer(repo *mockRepo, rateLimit int) *orchestration.Consumer {
@@ -76,20 +77,16 @@ func TestConsumer_AggregatesStatsByType(t *testing.T) {
 		}
 	}
 
-	count, sum := consumer.Stats()
+	sumByType, err := repo.SumValueByType(ctx)
+	if err != nil {
+		t.Fatalf("SumValueByType() error: %v", err)
+	}
+	assert.Equal(t, 30, sumByType[2])
+	assert.Equal(t, 15, sumByType[5])
 
-	if count[2] != 2 {
-		t.Errorf("type 2 count: got %d, want 2", count[2])
-	}
-	if sum[2] != 30 {
-		t.Errorf("type 2 sum: got %d, want 30", sum[2])
-	}
-	if count[5] != 1 {
-		t.Errorf("type 5 count: got %d, want 1", count[5])
-	}
-	if sum[5] != 15 {
-		t.Errorf("type 5 sum: got %d, want 15", sum[5])
-	}
+	counts, err := repo.CountByState(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, counts[tasks.StateDone])
 }
 
 func TestConsumer_RateLimiterThrottlesProcessing(t *testing.T) {
@@ -143,29 +140,90 @@ func TestConsumer_ConcurrentHandlerCallsAreSafe(t *testing.T) {
 	repo := newMockRepo()
 	consumer := newConsumer(repo, 1000)
 	ctx := context.Background()
-
 	const n = 20
 	done := make(chan error, n)
+	for i := range n {
+		task, _ := repo.Create(
+			ctx,
+			tasks.TaskType(i%10),
+			tasks.TaskValue(1),
+		)
 
-	for i := 0; i < n; i++ {
-		task, _ := repo.Create(ctx, tasks.TaskType(i%10), tasks.TaskValue(0))
 		go func(task *tasks.Task) {
 			done <- consumer.Handler()(ctx, task)
 		}(task)
 	}
 
-	for i := 0; i < n; i++ {
+	for range n {
 		if err := <-done; err != nil {
 			t.Errorf("concurrent handler error: %v", err)
 		}
 	}
 
-	count, _ := consumer.Stats()
+	counts, err := repo.CountByState(ctx)
+	if err != nil {
+		t.Fatalf("CountByState() error: %v", err)
+	}
+
+	if counts[tasks.StateDone] != n {
+		t.Errorf(
+			"expected %d done tasks, got %d",
+			n,
+			counts[tasks.StateDone],
+		)
+	}
+
+	sumByType, err := repo.SumValueByType(ctx)
+	if err != nil {
+		t.Fatalf("SumValueByType() error: %v", err)
+	}
+
 	total := int64(0)
-	for _, c := range count {
-		total += c
+
+	for _, sum := range sumByType {
+		total += sum
 	}
+
+	// every task had value 1
 	if total != n {
-		t.Errorf("expected %d total processed, got %d", n, total)
+		t.Errorf(
+			"expected total processed value %d, got %d",
+			n,
+			total,
+		)
 	}
+}
+
+func TestConsumer_ContinuesProcessingTaskAlreadyInProcessing(t *testing.T) {
+	repo := newMockRepo()
+	consumer := newConsumer(repo, 100)
+
+	ctx := context.Background()
+
+	task, err := repo.Create(ctx, tasks.TaskType(2), tasks.TaskValue(10))
+	if err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// simulate a previously processing tasks
+	err = repo.UpdateState(ctx, task.ID(), tasks.StateProcessing)
+	if err != nil {
+		t.Fatalf("UpdateState(processing) error: %v", err)
+	}
+	// now the consumer receives the same task again
+	// UpdateState(received -> processing) should fail,
+	// triggering continueProcessingTask()
+	err = consumer.Handler()(ctx, task)
+	if err != nil {
+		t.Fatalf("Handler() error: %v", err)
+	}
+	updated, err := repo.GetByID(ctx, task.ID())
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	
+	sumByType, err := repo.SumValueByType(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, tasks.StateDone, updated.State(), "expected recovered task state=done, got %q", updated.State())
+	assert.Equal(t, int64(10), sumByType[2], "expected type 2 total=10, got %d", sumByType[2])
 }
