@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ekefan/marbl/storage"
 	"github.com/ekefan/marbl/tasks"
 )
 
@@ -57,6 +58,11 @@ func (m *mockRepo) UpdateState(ctx context.Context, id int64, next tasks.TaskSta
 		return nil
 	}
 
+	// mirroring real repo contract behaviou
+	// only allowing claiming received -> processing
+	if next == tasks.StateProcessing && task.State() != tasks.StateReceived {
+		return storage.ErrTasksNoUpdate
+	}
 	return task.Transition(next)
 }
 
@@ -79,6 +85,22 @@ func (m *mockRepo) CountByState(ctx context.Context) (map[tasks.TaskState]int64,
 		counts[t.State()]++
 	}
 	return counts, nil
+}
+func (m *mockRepo) SumValueByType(ctx context.Context) (map[tasks.TaskType]int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	result := make(map[tasks.TaskType]int64)
+
+	for _, task := range m.tasks {
+		if task.State() != tasks.StateDone {
+			continue
+		}
+
+		result[task.Type()] += int64(task.Value())
+	}
+
+	return result, nil
 }
 
 func (m *mockRepo) created() []*tasks.Task {
