@@ -33,7 +33,7 @@ WHERE state = 'done'
 GROUP BY type;
 
 -- name: SumValueByType :many
-SELECT type, COALESCE(SUM(value), 0) AS total
+SELECT type, COALESCE(SUM(value), 0)::BIGINT AS total
 FROM tasks
 WHERE state = 'done'
 GROUP BY type;

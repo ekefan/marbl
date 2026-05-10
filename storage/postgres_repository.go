@@ -3,19 +3,25 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/ekefan/marbl/contracts"
 	"github.com/ekefan/marbl/storage/generated"
 	"github.com/ekefan/marbl/tasks"
+)
+
+var (
+	ErrTasksNoUpdate = errors.New("no tasks fit for this update")
 )
 
 // PostgresRepository implements contracts.TaskRepository backed by postgres.
@@ -106,10 +112,35 @@ func (r *PostgresRepository) UpdateState(ctx context.Context, id int64, next tas
 		State: generated.TaskState(next),
 	})
 	if err != nil {
+		// here, I could separate tasks updates between states to their own functions to ensure this check for processing 
+		// but with more time, I would do it...
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.Warn("task_no_update",
+				slog.String("task_id", fmt.Sprintf("%d", id)),
+				slog.String("next_task_state", fmt.Sprintf("%v", next)),
+				)
+			return ErrTasksNoUpdate
+		}
 		return fmt.Errorf("update task %d state to %q: %w", id, next, err)
 	}
 
 	return nil
+}
+
+func (r *PostgresRepository) SumValueByType(ctx context.Context) (map[tasks.TaskType]int64, error) {
+	rows, err := r.queries.SumValueByType(ctx)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"sum value by type: %w",
+			err,
+		)
+	}
+	result := make(map[tasks.TaskType]int64)
+
+	for _, row := range rows {
+		result[tasks.TaskType(row.Type)] = row.Total
+	}
+	return result, nil
 }
 
 func (r *PostgresRepository) GetByID(ctx context.Context, id int64) (*tasks.Task, error) {

@@ -227,7 +227,7 @@ func TestUpdateState_AdvancesLastUpdateTime(t *testing.T) {
 	}
 }
 
-func TestUpdateState_NoErrorOnCurrentStateProcessing(t *testing.T){
+func TestUpdateState_ErrorOnStateReprocessing(t *testing.T){
 	repo := testRepo
 	ctx := context.Background()
 	resetDB(t, ctx)
@@ -235,7 +235,7 @@ func TestUpdateState_NoErrorOnCurrentStateProcessing(t *testing.T){
 	task, _ := repo.Create(ctx, tasks.TaskType(2), tasks.TaskValue(3))
 	_ = repo.UpdateState(ctx, task.ID(), tasks.StateProcessing)
 	err := repo.UpdateState(ctx, task.ID(), tasks.StateProcessing)
-	assert.NoError(t, err)
+	assert.EqualError(t, err, ErrTasksNoUpdate.Error())
 }
 
 func TestUpdateState_DoesNotChangeCreationTime(t *testing.T) {
