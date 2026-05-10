@@ -19,7 +19,7 @@ const (
 	TaskStateDone       TaskState = "done"
 )
 
-func (e *TaskState) Scan(src any) error {
+func (e *TaskState) Scan(src interface{}) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = TaskState(s)
@@ -37,7 +37,7 @@ type NullTaskState struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullTaskState) Scan(value any) error {
+func (ns *NullTaskState) Scan(value interface{}) error {
 	if value == nil {
 		ns.TaskState, ns.Valid = "", false
 		return nil

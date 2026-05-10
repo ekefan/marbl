@@ -122,15 +122,15 @@ func (q *Queries) GetTaskByID(ctx context.Context, id int64) (Task, error) {
 }
 
 const sumValueByType = `-- name: SumValueByType :many
-SELECT type, COALESCE(SUM(value), 0) AS total
+SELECT type, COALESCE(SUM(value), 0)::BIGINT AS total
 FROM tasks
 WHERE state = 'done'
 GROUP BY type
 `
 
 type SumValueByTypeRow struct {
-	Type  int16       `db:"type" json:"type"`
-	Total interface{} `db:"total" json:"total"`
+	Type  int16 `db:"type" json:"type"`
+	Total int64 `db:"total" json:"total"`
 }
 
 func (q *Queries) SumValueByType(ctx context.Context) ([]SumValueByTypeRow, error) {
