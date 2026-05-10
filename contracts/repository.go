@@ -21,4 +21,7 @@ type TaskRepository interface {
 
 	// CountByState returns the number of tasks currently in each state.
 	CountByState(ctx context.Context) (map[tasks.TaskState]int64, error)
+
+	// SumValueByType returns the total processed value grouped by task type.
+	SumValueByType(ctx context.Context) (map[tasks.TaskType]int64, error)
 }
