@@ -81,12 +81,12 @@ func TestConsumer_AggregatesStatsByType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SumValueByType() error: %v", err)
 	}
-	assert.Equal(t, 30, sumByType[2])
-	assert.Equal(t, 15, sumByType[5])
+	assert.Equal(t, int64(30), sumByType[2])
+	assert.Equal(t, int64(15), sumByType[5])
 
 	counts, err := repo.CountByState(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, counts[tasks.StateDone])
+	assert.Equal(t, int64(3), counts[tasks.StateDone])
 }
 
 func TestConsumer_RateLimiterThrottlesProcessing(t *testing.T) {
