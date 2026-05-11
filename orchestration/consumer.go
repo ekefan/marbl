@@ -19,8 +19,8 @@ type ConsumerConfig struct {
 	// RateLimit is the maximum number of tasks processed per second.
 	RateLimit int
 
-	// RateBurst is the maximum burst size for the token bucket.
-	// Defaults to RateLimit if zero.
+	// RateBurst is the maximum burst size for the token bucket. For google's Limiter
+	// Based on take description, rateburst is equal to ratelimit...
 	RateBurst int
 
 	// OnProcessing is called when a task moves to processing state.
@@ -72,17 +72,13 @@ func (c *Consumer) Handler() contracts.TaskHandler {
 			return err
 		}
 		claimed := false
-
 		if err := c.repo.UpdateState(ctx, task.ID(), tasks.StateProcessing); err != nil {
 			if errors.Is(err, storage.ErrTasksNoUpdate) {
 				return c.continueProcessingTask(ctx, task)
 			}
 			return err
 		}
-
 		claimed = true
-
-
 		if claimed && c.cfg.OnProcessing != nil {
 			c.cfg.OnProcessing()
 		}

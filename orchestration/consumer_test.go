@@ -2,6 +2,7 @@ package orchestration_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ func TestConsumer_UpdatesStateToProcessingThenDone(t *testing.T) {
 	}
 
 	updated, _ := repo.GetByID(ctx, task.ID())
+	fmt.Println(updated.State())
 	if updated.State() != tasks.StateDone {
 		t.Errorf("expected state=done, got %q", updated.State())
 	}
@@ -221,7 +223,7 @@ func TestConsumer_ContinuesProcessingTaskAlreadyInProcessing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
-	
+
 	sumByType, err := repo.SumValueByType(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, tasks.StateDone, updated.State(), "expected recovered task state=done, got %q", updated.State())

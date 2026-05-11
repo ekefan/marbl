@@ -11,9 +11,9 @@ import (
 // --- mock repository ---
 
 type mockRepo struct {
-	mu      sync.Mutex
-	tasks   map[int64]*tasks.Task
-	nextID  int64
+	mu        sync.Mutex
+	tasks     map[int64]*tasks.Task
+	nextID    int64
 	createErr error
 	updateErr error
 }
@@ -60,9 +60,17 @@ func (m *mockRepo) UpdateState(ctx context.Context, id int64, next tasks.TaskSta
 
 	// mirroring real repo contract behaviou
 	// only allowing claiming received -> processing
-	if next == tasks.StateProcessing && task.State() != tasks.StateReceived {
+	switch {
+	case task.State() == tasks.StateReceived &&
+		next == tasks.StateProcessing:
+
+	case task.State() == tasks.StateProcessing &&
+		next == tasks.StateDone:
+
+	default:
 		return storage.ErrTasksNoUpdate
 	}
+
 	return task.Transition(next)
 }
 
@@ -116,9 +124,9 @@ func (m *mockRepo) created() []*tasks.Task {
 // --- mock publisher ---
 
 type mockPublisher struct {
-	mu        sync.Mutex
-	published []*tasks.Task
-	depth     int64
+	mu         sync.Mutex
+	published  []*tasks.Task
+	depth      int64
 	publishErr error
 	depthErr   error
 }

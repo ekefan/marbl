@@ -124,7 +124,7 @@ func (p *Producer) produce(ctx context.Context) error {
 			slog.Int64("task_id", task.ID()),
 			slog.String("error", err.Error()),
 		)
-		// non-fatal — task is persisted in DB, skip this tick
+		// handle this with traditional outbox pattern....
 		return nil
 	}
 
