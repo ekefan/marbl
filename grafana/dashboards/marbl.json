@@ -1,5 +1,5 @@
 {
-  "title": "Marbl Task Pipeline",
+  "title": "Marbl Task Proc Pipeline",
   "uid": "marbl-pipeline",
   "version": 1,
   "refresh": "5s",
@@ -23,7 +23,7 @@
           "legendFormat": "done"
         },
         {
-          "expr": "marbl_producer_tasks_produced_total - marbl_consumer_tasks_done_total - marbl_consumer_tasks_processing",
+          "expr": "marbl_producer_tasks_received_total",
           "legendFormat": "received"
         }
       ],
