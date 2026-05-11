@@ -26,7 +26,7 @@ import (
 var version = "dev_take_home"
 
 func main() {
-	cfgPath := flag.String("config", "cmd/consumer/config.yaml", "path to config file")
+	cfgPath := flag.String("config", "config.yaml", "path to config file")
 	versionFlag := flag.Bool("version", false, "print build version and exit")
 	flag.Parse()
 
@@ -56,6 +56,10 @@ func run(cfgPath string) error {
 	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
 	consumerMetrics, err := metrics.NewConsumerMetrics(reg)
+	if err != nil {
+		return fmt.Errorf("init metrics: %w", err)
+	}
+	prodMetrics, err := metrics.NewProducerMetrics(reg)
 	if err != nil {
 		return fmt.Errorf("init metrics: %w", err)
 	}
@@ -98,6 +102,7 @@ func run(cfgPath string) error {
 
 		OnDone: func(taskType int, value int) {
 			consumerMetrics.TasksProcessing.Dec()
+			prodMetrics.TasksReceived.Dec()
 			consumerMetrics.TasksDone.Inc()
 			consumerMetrics.TasksProcessedByType.
 				WithLabelValues(fmt.Sprintf("%d", taskType)).Inc()

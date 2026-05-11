@@ -29,7 +29,7 @@ import (
 var version = "dev"
 
 func main() {
-	cfgPath := flag.String("config", "cmd/producer/config.yaml", "path to config file")
+	cfgPath := flag.String("config", "config.yaml", "path to config file")
 	versionFlag := flag.Bool("version", false, "print build version and exit")
 	flag.Parse()
 
@@ -105,6 +105,7 @@ func run(cfgPath string) error {
 			Logger:     logger,
 			OnProduce: func() {
 				prodMetrics.TasksProduced.Inc()
+				prodMetrics.TasksReceived.Inc()
 			},
 		},
 	)

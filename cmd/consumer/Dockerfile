@@ -1,5 +1,5 @@
-# ── Stage 1: build ────────────────────────────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine3.22 AS builder
+
 
 WORKDIR /app
 
@@ -16,7 +16,6 @@ RUN go build \
     -o /bin/consumer \
     ./cmd/consumer
 
-# ── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM alpine:3.19
 
 RUN addgroup -S marbl && adduser -S marbl -G marbl
@@ -24,11 +23,11 @@ RUN addgroup -S marbl && adduser -S marbl -G marbl
 WORKDIR /app
 
 COPY --from=builder /bin/consumer              ./consumer
-COPY --from=builder /app/cmd/consumer/config.yaml ./cmd/consumer/config.yaml
+# COPY --from=builder /app/cmd/consumer/config.yaml ./cmd/consumer/config.yaml
 
 USER marbl
 
 EXPOSE 9092 6062
 
 ENTRYPOINT ["./consumer"]
-CMD ["--config", "cmd/consumer/config.yaml"]
+CMD ["--config", "/app/config.yaml"]
