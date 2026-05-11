@@ -56,11 +56,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func newPublisher(t *testing.T) *transport.Publisher {
+func newPublisher(t *testing.T, name string) *transport.Publisher {
 	t.Helper()
 	pub, err := transport.NewPublisher(transport.PublisherConfig{
 		DSN:       brokerDSN,
-		QueueName: testQueue,
+		QueueName: testQueue+ fmt.Sprintf("%s", name),
 	})
 	if err != nil {
 		t.Fatalf("new publisher: %v", err)
@@ -69,11 +69,11 @@ func newPublisher(t *testing.T) *transport.Publisher {
 	return pub
 }
 
-func newSubscriber(t *testing.T) *transport.Subscriber {
+func newSubscriber(t *testing.T, name string) *transport.Subscriber {
 	t.Helper()
 	sub, err := transport.NewSubscriber(transport.SubscriberConfig{
 		DSN:       brokerDSN,
-		QueueName: testQueue,
+		QueueName: testQueue+ fmt.Sprintf("%s", name),
 		Prefetch:  10,
 	})
 	if err != nil {
@@ -92,9 +92,8 @@ func newTask(t *testing.T, id int64, typ int, val int) *tasks.Task {
 	return task
 }
 
-func purgeQueue(t *testing.T) {
+func purgeQueue(t *testing.T, pub *transport.Publisher) {
 	t.Helper()
-	pub := newPublisher(t)
 	if err := pub.PurgeQueue(context.Background()); err != nil {
 		t.Fatalf("purge queue: %v", err)
 	}

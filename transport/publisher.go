@@ -138,16 +138,22 @@ func (p *Publisher) Publish(ctx context.Context, task *tasks.Task) error {
 }
 
 // QueueDepth returns the number of ready (unacked) messages in the queue.
-// Used by the producer to enforce max backlog before publishing.
+// Formally used by the producer to enforce max backlog before publishing.
 //
 // Deprecated as I inferred maxbacklog to mean task already produced in db but not yet processed
-func (p *Publisher) QueueDepth(ctx context.Context) (int64, error) {
-	q, err := p.ch.QueueDeclare(p.queueName, true, false, false, true, nil )
 
+func (p *Publisher) QueueDepth(ctx context.Context) (int64, error) {
+	q, err := p.ch.QueueDeclarePassive(
+		p.queueName,
+		true,  // durable
+		false, // auto-delete
+		false, // exclusive
+		false, // no-wait
+		nil,
+	)
 	if err != nil {
 		return 0, fmt.Errorf("inspect queue %q: %w", p.queueName, err)
 	}
-
 	return int64(q.Messages), nil
 }
 
