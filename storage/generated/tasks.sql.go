@@ -156,20 +156,23 @@ func (q *Queries) SumValueByType(ctx context.Context) ([]SumValueByTypeRow, erro
 const updateTaskState = `-- name: UpdateTaskState :one
 UPDATE tasks
 SET
-    state            = $2,
+    state = $2::task_state,
     last_update_time = NOW()
 WHERE id = $1
-AND state  = 'received'
+AND (
+    (state = 'received'   AND $2::task_state = 'processing')
+ OR (state = 'processing' AND $2::task_state = 'done')
+)
 RETURNING id, type, value, state, creation_time, last_update_time
 `
 
 type UpdateTaskStateParams struct {
-	ID    int64     `db:"id" json:"id"`
-	State TaskState `db:"state" json:"state"`
+	ID      int64     `db:"id" json:"id"`
+	Column2 TaskState `db:"column_2" json:"column_2"`
 }
 
 func (q *Queries) UpdateTaskState(ctx context.Context, arg UpdateTaskStateParams) (Task, error) {
-	row := q.db.QueryRow(ctx, updateTaskState, arg.ID, arg.State)
+	row := q.db.QueryRow(ctx, updateTaskState, arg.ID, arg.Column2)
 	var i Task
 	err := row.Scan(
 		&i.ID,

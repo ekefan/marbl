@@ -15,10 +15,13 @@ LIMIT 1;
 -- name: UpdateTaskState :one
 UPDATE tasks
 SET
-    state            = $2,
+    state = $2::task_state,
     last_update_time = NOW()
 WHERE id = $1
-AND state  = 'received'
+AND (
+    (state = 'received'   AND $2::task_state = 'processing')
+ OR (state = 'processing' AND $2::task_state = 'done')
+)
 RETURNING *;
 
 -- name: CountByState :many

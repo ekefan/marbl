@@ -109,7 +109,7 @@ func (r *PostgresRepository) Create(ctx context.Context, taskType tasks.TaskType
 func (r *PostgresRepository) UpdateState(ctx context.Context, id int64, next tasks.TaskState) error {
 	_, err := r.queries.UpdateTaskState(ctx, generated.UpdateTaskStateParams{
 		ID:    id,
-		State: generated.TaskState(next),
+		Column2: generated.TaskState(next),
 	})
 	if err != nil {
 		// here, I could separate tasks updates between states to their own functions to ensure this check for processing 
