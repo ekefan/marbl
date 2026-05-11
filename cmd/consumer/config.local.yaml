@@ -1,10 +1,10 @@
 database:
-  dsn: "postgres://marbl:marbl@postgres:5432/marbl" 
+  dsn: "postgres://marbl:marbl@localhost:5432/marbl"
   
   migrations_path: "file://storage/migrations"
 
 rabbitmq:
-  dsn: "amqp://guest:guest@rabbitmq:5672/"
+  dsn: "amqp://guest:guest@localhost:5672/"
   queue_name: "tasks"
 
 consumer:
