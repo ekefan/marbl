@@ -12,9 +12,10 @@ import (
 )
 
 func TestSubscriber_ReceivesSingleTask(t *testing.T) {
-	purgeQueue(t)
-	pub := newPublisher(t)
-	sub := newSubscriber(t)
+	pub := newPublisher(t, t.Name())
+	sub := newSubscriber(t, t.Name())
+	defer sub.Close()
+	defer purgeQueue(t, pub) // pub is closed last, so purge is safe
 	ctx := context.Background()
 
 	task := newTask(t, 42, 5, 77)
@@ -49,9 +50,10 @@ func TestSubscriber_ReceivesSingleTask(t *testing.T) {
 }
 
 func TestSubscriber_ReceivesMultipleTasks(t *testing.T) {
-	purgeQueue(t)
-	pub := newPublisher(t)
-	sub := newSubscriber(t)
+	pub := newPublisher(t, t.Name())
+	sub := newSubscriber(t, t.Name())
+	defer sub.Close()
+	defer purgeQueue(t, pub)
 	ctx := context.Background()
 
 	const n = 5
@@ -97,9 +99,10 @@ func TestSubscriber_ReceivesMultipleTasks(t *testing.T) {
 }
 
 func TestSubscriber_NacksAndRequeuesOnHandlerError(t *testing.T) {
-	purgeQueue(t)
-	pub := newPublisher(t)
-	sub := newSubscriber(t)
+	pub := newPublisher(t, t.Name())
+	sub := newSubscriber(t, t.Name())
+	defer sub.Close()
+	defer purgeQueue(t, pub)
 	ctx := context.Background()
 
 	task := newTask(t, 1, 0, 10)
@@ -108,7 +111,6 @@ func TestSubscriber_NacksAndRequeuesOnHandlerError(t *testing.T) {
 	}
 
 	attempts := 0
-	// fail twice, succeed on third — validates requeue on handler error
 	handler := contracts.TaskHandler(func(ctx context.Context, _ *tasks.Task) error {
 		attempts++
 		if attempts < 3 {
@@ -136,9 +138,8 @@ func TestSubscriber_NacksAndRequeuesOnHandlerError(t *testing.T) {
 }
 
 func TestSubscriber_StopsOnContextCancel(t *testing.T) {
-	purgeQueue(t)
-	sub := newSubscriber(t)
-
+	sub := newSubscriber(t, t.Name())
+	defer sub.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	done := make(chan error, 1)
@@ -162,9 +163,9 @@ func TestSubscriber_StopsOnContextCancel(t *testing.T) {
 }
 
 func TestRoundtrip_QueueDepthDecreasesAfterConsume(t *testing.T) {
-	purgeQueue(t)
-	pub := newPublisher(t)
-	sub := newSubscriber(t)
+	pub := newPublisher(t, t.Name())
+	// purgeQueue uses pub's channel — defer it before sub so pub outlives sub's cleanup
+	defer purgeQueue(t, pub)
 	ctx := context.Background()
 
 	const n = 4
@@ -173,14 +174,22 @@ func TestRoundtrip_QueueDepthDecreasesAfterConsume(t *testing.T) {
 		if err := pub.Publish(ctx, task); err != nil {
 			t.Fatalf("Publish() task %d: %v", i, err)
 		}
+		// avoid interleaving QueueDepth's passive QueueDeclare with
+		// the confirms channel while publishes are in-flight
 	}
 
-	depth, _ := pub.QueueDepth(ctx)
+	depth, err := pub.QueueDepth(ctx)
+	if err != nil {
+		t.Fatalf("QueueDepth() after publish error: %v", err)
+	}
 	if depth != n {
-		t.Fatalf("expected depth=%d before consume, got %d", n, depth)
+		t.Fatalf("expected depth=%d after publish, got %d", n, depth)
 	}
 
 	consumed := make(chan struct{}, n)
+	sub := newSubscriber(t, t.Name())
+	defer sub.Close()
+
 	handler := contracts.TaskHandler(func(_ context.Context, _ *tasks.Task) error {
 		consumed <- struct{}{}
 		return nil
@@ -201,7 +210,7 @@ func TestRoundtrip_QueueDepthDecreasesAfterConsume(t *testing.T) {
 	// brief pause for acks to propagate to broker
 	time.Sleep(200 * time.Millisecond)
 
-	depth, err := pub.QueueDepth(ctx)
+	depth, err = pub.QueueDepth(ctx)
 	if err != nil {
 		t.Fatalf("QueueDepth() error: %v", err)
 	}
