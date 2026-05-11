@@ -63,9 +63,10 @@ func NewSubscriber(cfg SubscriberConfig) (*Subscriber, error) {
 		return nil, fmt.Errorf("open channel: %w", err)
 	}
 
+	// matches the publishers configuration
 	_, err = ch.QueueDeclare(
 		cfg.QueueName,
-		true,  // durable — must match publisher declaration
+		true,  // durable
 		false, // auto-delete
 		false, // exclusive
 		false, // no-wait
@@ -185,7 +186,7 @@ func (s *Subscriber) handle(ctx context.Context, delivery amqp.Delivery, handler
 	)
 
 	if err := handler(ctx, task); err != nil {
-		// recoverable — Serve() will nack with requeue=true
+		slog.Warn("recoverable error", slog.String("action", "nack with requeue=true"))
 		return fmt.Errorf("handler task %d: %w", task.ID(), err)
 	}
 
