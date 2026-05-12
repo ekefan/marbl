@@ -3,7 +3,7 @@ schema_init_tasks:
 schema_add_comments:
 	migrate create -ext sql -dir storage/migrations -seq add_comment
 sqlc-gen:
-	sqlc generate -f storage/sqlc.yaml
+	sqlc generate
 
 mock_publisher_contract:
 	mockgen -source=comm_channel/publisher.go -destination=internal/mocks/publisher.go -package=mocks
