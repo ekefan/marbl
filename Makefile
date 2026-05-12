@@ -6,7 +6,7 @@ sqlc-gen:
 	sqlc generate -f storage/sqlc.yaml
 
 mock_publisher_contract:
-	mockgen -source=contracts/publisher.go -destination=internal/mocks/publisher.go -package=mocks
+	mockgen -source=comm_channel/publisher.go -destination=internal/mocks/publisher.go -package=mocks
 #
 .PHONY: all build test lint generate migrate-up migrate-down clean help
 
