@@ -15,12 +15,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
+	"github.com/ekefan/marbl/application"
 	"github.com/ekefan/marbl/config"
+	"github.com/ekefan/marbl/infrastructure/postgres"
+	"github.com/ekefan/marbl/infrastructure/rabbitmq"
+	"github.com/ekefan/marbl/internal/mlogger"
 	"github.com/ekefan/marbl/metrics"
-	"github.com/ekefan/marbl/marbl"
-	"github.com/ekefan/marbl/pkg/mlogger"
-	"github.com/ekefan/marbl/storage"
-	"github.com/ekefan/marbl/transport"
 )
 
 var version string
@@ -76,7 +76,7 @@ func run(cfgPath string) error {
 	}
 	defer repo.Close()
 
-	sub, err := transport.NewSubscriber(transport.SubscriberConfig{
+	sub, err := rabbitmq.NewSubscriber(rabbitmq.SubscriberConfig{
 		DSN:       cfg.RabbitMQ.DSN,
 		QueueName: cfg.RabbitMQ.QueueName,
 		Prefetch:  cfg.Consumer.Prefetch,
@@ -87,7 +87,7 @@ func run(cfgPath string) error {
 	}
 	defer sub.Close()
 
-	consumer := marbl.NewConsumer(repo, marbl.ConsumerConfig{
+	consumer := application.NewConsumer(repo, application.ConsumerConfig{
 		RateLimit: cfg.Consumer.RateLimit,
 		RateBurst: cfg.Consumer.RateBurst,
 		Logger:    logger,

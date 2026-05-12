@@ -16,12 +16,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
+	"github.com/ekefan/marbl/application"
 	"github.com/ekefan/marbl/config"
+	"github.com/ekefan/marbl/infrastructure/postgres"
+	"github.com/ekefan/marbl/infrastructure/rabbitmq"
+	"github.com/ekefan/marbl/internal/mlogger"
 	"github.com/ekefan/marbl/metrics"
-	"github.com/ekefan/marbl/marbl"
-	"github.com/ekefan/marbl/pkg/mlogger"
-	"github.com/ekefan/marbl/storage"
-	"github.com/ekefan/marbl/transport"
 )
 
 var version string
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	if err := run(*cfgPath); err != nil {
-		if errors.Is(err, marbl.ErrMaxBacklogReached) {
+		if errors.Is(err, application.ErrMaxBacklogReached) {
 			slog.Info("producer finished: max backlog reached")
 			os.Exit(0)
 		}
@@ -84,7 +84,7 @@ func run(cfgPath string) error {
 	}
 	defer repo.Close()
 
-	pub, err := transport.NewPublisher(transport.PublisherConfig{
+	pub, err := rabbitmq.NewPublisher(rabbitmq.PublisherConfig{
 		DSN:       cfg.RabbitMQ.DSN,
 		QueueName: cfg.RabbitMQ.QueueName,
 		Logger:    logger,
@@ -94,10 +94,10 @@ func run(cfgPath string) error {
 	}
 	defer pub.Close()
 
-	producer := marbl.NewProducer(
+	producer := application.NewProducer(
 		repo,
 		pub,
-		marbl.ProducerConfig{
+		application.ProducerConfig{
 			MaxBacklog: cfg.Producer.MaxBacklog,
 			Rate:       cfg.Producer.RatePerSecond,
 			Logger:     logger,
