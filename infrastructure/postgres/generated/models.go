@@ -61,4 +61,5 @@ type Task struct {
 	State          TaskState          `db:"state" json:"state"`
 	CreationTime   pgtype.Timestamptz `db:"creation_time" json:"creation_time"`
 	LastUpdateTime pgtype.Timestamptz `db:"last_update_time" json:"last_update_time"`
+	Comment        *string            `db:"comment" json:"comment"`
 }

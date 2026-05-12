@@ -79,7 +79,7 @@ INSERT INTO tasks (
 ) VALUES (
     $1, $2
 )
-RETURNING id, type, value, state, creation_time, last_update_time
+RETURNING id, type, value, state, creation_time, last_update_time, comment
 `
 
 type CreateTaskParams struct {
@@ -97,12 +97,13 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.State,
 		&i.CreationTime,
 		&i.LastUpdateTime,
+		&i.Comment,
 	)
 	return i, err
 }
 
 const getTaskByID = `-- name: GetTaskByID :one
-SELECT id, type, value, state, creation_time, last_update_time FROM tasks
+SELECT id, type, value, state, creation_time, last_update_time, comment FROM tasks
 WHERE id = $1
 LIMIT 1
 `
@@ -117,6 +118,7 @@ func (q *Queries) GetTaskByID(ctx context.Context, id int64) (Task, error) {
 		&i.State,
 		&i.CreationTime,
 		&i.LastUpdateTime,
+		&i.Comment,
 	)
 	return i, err
 }
@@ -163,7 +165,7 @@ AND (
     (state = 'received'   AND $2::task_state = 'processing')
  OR (state = 'processing' AND $2::task_state = 'done')
 )
-RETURNING id, type, value, state, creation_time, last_update_time
+RETURNING id, type, value, state, creation_time, last_update_time, comment
 `
 
 type UpdateTaskStateParams struct {
@@ -181,6 +183,7 @@ func (q *Queries) UpdateTaskState(ctx context.Context, arg UpdateTaskStateParams
 		&i.State,
 		&i.CreationTime,
 		&i.LastUpdateTime,
+		&i.Comment,
 	)
 	return i, err
 }
