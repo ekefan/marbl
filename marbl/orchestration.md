@@ -1,6 +1,0 @@
-Key decisions worth flagging for the interview:
-produce() is non-fatal on publish/DB errors — the producer skips the tick and logs rather than crashing. A transient broker blip shouldn't take down the whole producer. Only ErrMaxBacklogReached and ctx cancellation are intentional stops.
-typeStats uses sync.RWMutex not a channel — record() writes are fast and infrequent. A mutex here is simpler and more efficient than a channel. Channels would add unnecessary goroutine overhead for what is just a counter update.
-Handler() returns a func, not a method — the subscriber calls handler(ctx, task). Returning the func from NewConsumer means the consumer's internal state (limiter, stats, repo) is captured in the closure. Clean, no interface needed.
-Rate limiter sits inside Handler() — limiter.Wait(ctx) blocks before doing any work. This means the prefetch queue can fill up but actual processing is throttled. The two knobs (RabbitMQ prefetch + token bucket) give fine-grained control.
-Snapshot() returns copies not references — the metrics layer calling Stats() gets its own maps. No risk of it reading while record() is writing
