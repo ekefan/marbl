@@ -1,23 +1,13 @@
 schema_init_tasks:
-	migrate create -ext sql -dir storage/migrations -seq init_task
+	migrate create -ext sql -dir /storage/migrations -seq init_task
 schema_add_comments:
 	migrate create -ext sql -dir storage/migrations -seq add_comment
 sqlc-gen:
 	sqlc generate -f storage/sqlc.yaml
-# # Version baked in at build time
-# VERSION=$(git describe --tags --always)
-# go build -ldflags="-s -w -X main.version=$(VERSION)" ./cmd/producer
-# # what does version mean?
 
-# # PGO profile would be added in a second  pass when we have a cpu profile
-
-
-
-
-
-
-# UP ALTER TABLE tasks ADD COLUMN comment TEXT;
-# DOWN ALTER TABLE tasks DROP COLUMN IF EXISTS comment;
+mock_publisher_contract:
+	mockgen -source=contracts/publisher.go -destination=internal/mocks/publisher.go -package=mocks
+#
 .PHONY: all build test lint generate migrate-up migrate-down clean help
 
 # ── Variables ─────────────────────────────────────────────────────────────────
@@ -36,17 +26,15 @@ MIGRATIONS   := storage/migrations
 
 all: lint test build
 
-# ── Build ─────────────────────────────────────────────────────────────────────
-
 build: build-producer build-consumer
 
 build-producer:
-	@echo "→ building producer (version=$(VERSION))"
+	@echo " building producer (version=$(VERSION))"
 	@mkdir -p bin
 	go build $(LDFLAGS) -o $(PRODUCER_BIN) ./cmd/producer
 
 build-consumer:
-	@echo "→ building consumer (version=$(VERSION))"
+	@echo " building consumer (version=$(VERSION))"
 	@mkdir -p bin
 	go build $(LDFLAGS) -o $(CONSUMER_BIN) ./cmd/consumer
 
@@ -57,26 +45,26 @@ version-check: build
 # ── Generate ──────────────────────────────────────────────────────────────────
 
 generate:
-	@echo "→ running sqlc generate"
+	@echo " running sqlc generate"
 	cd storage && sqlc generate
-	@echo "→ running go generate"
+	@echo " running go generate"
 	go generate ./...
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 test:
-	@echo "→ running all tests"
+	@echo " running all tests"
 	go test -v -race -count=1 -timeout=120s ./...
 
 test-short:
-	@echo "→ running unit tests only (no containers)"
+	@echo " running unit tests only (no containers)"
 	go test -v -race -count=1 -short ./...
 
 test-cover:
-	@echo "→ running tests with coverage"
+	@echo " running tests with coverage"
 	go test -race -count=1 -timeout=120s -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
-	@echo "→ coverage report: coverage.html"
+	@echo " coverage report: coverage.html"
 
 # ── Lint ──────────────────────────────────────────────────────────────────────
 
@@ -89,21 +77,21 @@ lint:
 # ── Migration ─────────────────────────────────────────────────────────────────
 
 migrate-up:
-	@echo "→ running migrations up"
+	@echo " running migrations up"
 	migrate -path $(MIGRATIONS) -database "$(MIGRATE_DSN)" up
 
 migrate-down:
-	@echo "→ rolling back last migration"
+	@echo " rolling back last migration"
 	migrate -path $(MIGRATIONS) -database "$(MIGRATE_DSN)" down 1
 
 migrate-status:
-	@echo "→ migration status"
+	@echo " migration status"
 	migrate -path $(MIGRATIONS) -database "$(MIGRATE_DSN)" version
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 
 docker-up:
-	@echo "→ starting full stack"
+	@echo " starting full stack"
 	docker compose up --build -d
 
 docker-down:
@@ -118,12 +106,12 @@ docker-clean:
 # ── Profiling ─────────────────────────────────────────────────────────────────
 
 flamegraph-producer:
-	@echo "→ generating flamegraph for producer (30s)"
+	@echo " generating flamegraph for producer (30s)"
 	curl -s "http://localhost:6061/debug/pprof/profile?seconds=30" -o producer.prof
 	go tool pprof -http=:8080 producer.prof
 
 flamegraph-consumer:
-	@echo "→ generating flamegraph for consumer (30s)"
+	@echo " generating flamegraph for consumer (30s)"
 	curl -s "http://localhost:6062/debug/pprof/profile?seconds=30" -o consumer.prof
 	go tool pprof -http=:8080 consumer.prof
 

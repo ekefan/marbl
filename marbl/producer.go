@@ -1,4 +1,4 @@
-package orchestration
+package marbl
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type ProducerConfig struct {
 
 	// OnProduce is an optional hook called after each successful publish.
 	// Currently being used to increment prometheus counters without importing metrics
-	// into the orchestration package.
+	// into the marbl package.
 	OnProduce func()
 
 	Logger *slog.Logger

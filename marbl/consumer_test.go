@@ -1,4 +1,4 @@
-package orchestration_test
+package marbl_test
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ekefan/marbl/orchestration"
+	"github.com/ekefan/marbl/marbl"
 	"github.com/ekefan/marbl/tasks"
 	"github.com/stretchr/testify/assert"
 )
 
-func newConsumer(repo *mockRepo, rateLimit int) *orchestration.Consumer {
-	return orchestration.NewConsumer(repo, orchestration.ConsumerConfig{
+func newConsumer(repo *mockRepo, rateLimit int) *marbl.Consumer {
+	return marbl.NewConsumer(repo, marbl.ConsumerConfig{
 		RateLimit: rateLimit,
 		RateBurst: rateLimit,
 	})

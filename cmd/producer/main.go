@@ -18,15 +18,13 @@ import (
 
 	"github.com/ekefan/marbl/config"
 	"github.com/ekefan/marbl/metrics"
-	"github.com/ekefan/marbl/orchestration"
+	"github.com/ekefan/marbl/marbl"
 	"github.com/ekefan/marbl/pkg/mlogger"
 	"github.com/ekefan/marbl/storage"
 	"github.com/ekefan/marbl/transport"
 )
 
-// version is injected at build time:
-// go build -ldflags="-s -w -X main.version=$(git describe --tags --always)" ./cmd/producer
-var version = "dev"
+var version string
 
 func main() {
 	cfgPath := flag.String("config", "config.yaml", "path to config file")
@@ -39,7 +37,7 @@ func main() {
 	}
 
 	if err := run(*cfgPath); err != nil {
-		if errors.Is(err, orchestration.ErrMaxBacklogReached) {
+		if errors.Is(err, marbl.ErrMaxBacklogReached) {
 			slog.Info("producer finished: max backlog reached")
 			os.Exit(0)
 		}
@@ -96,22 +94,20 @@ func run(cfgPath string) error {
 	}
 	defer pub.Close()
 
-	producer := orchestration.NewProducer(
+	producer := marbl.NewProducer(
 		repo,
 		pub,
-		orchestration.ProducerConfig{
+		marbl.ProducerConfig{
 			MaxBacklog: cfg.Producer.MaxBacklog,
 			Rate:       cfg.Producer.RatePerSecond,
 			Logger:     logger,
 			OnProduce: func() {
 				prodMetrics.TasksProduced.Inc()
-				prodMetrics.TasksReceived.Inc()
 			},
 		},
 	)
 
-	// --- graceful shutdown ---
-	// --- Handle running workers
+	// graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

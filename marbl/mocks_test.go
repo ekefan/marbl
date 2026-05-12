@@ -1,4 +1,4 @@
-package orchestration_test
+package marbl_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/ekefan/marbl/tasks"
 )
 
-// --- mock repository ---
 
 type mockRepo struct {
 	mu        sync.Mutex
@@ -119,42 +118,4 @@ func (m *mockRepo) created() []*tasks.Task {
 		out = append(out, t)
 	}
 	return out
-}
-
-// --- mock publisher ---
-
-type mockPublisher struct {
-	mu         sync.Mutex
-	published  []*tasks.Task
-	depth      int64
-	publishErr error
-	depthErr   error
-}
-
-func (m *mockPublisher) Publish(ctx context.Context, task *tasks.Task) error {
-	if m.publishErr != nil {
-		return m.publishErr
-	}
-	m.mu.Lock()
-	m.published = append(m.published, task)
-	m.depth++
-	m.mu.Unlock()
-	return nil
-}
-
-func (m *mockPublisher) QueueDepth(ctx context.Context) (int64, error) {
-	if m.depthErr != nil {
-		return 0, m.depthErr
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.depth, nil
-}
-
-func (m *mockPublisher) Close() error { return nil }
-
-func (m *mockPublisher) count() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.published)
 }

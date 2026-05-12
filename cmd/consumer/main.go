@@ -17,13 +17,13 @@ import (
 
 	"github.com/ekefan/marbl/config"
 	"github.com/ekefan/marbl/metrics"
-	"github.com/ekefan/marbl/orchestration"
+	"github.com/ekefan/marbl/marbl"
 	"github.com/ekefan/marbl/pkg/mlogger"
 	"github.com/ekefan/marbl/storage"
 	"github.com/ekefan/marbl/transport"
 )
 
-var version = "dev_take_home"
+var version string
 
 func main() {
 	cfgPath := flag.String("config", "config.yaml", "path to config file")
@@ -59,10 +59,6 @@ func run(cfgPath string) error {
 	if err != nil {
 		return fmt.Errorf("init metrics: %w", err)
 	}
-	prodMetrics, err := metrics.NewProducerMetrics(reg)
-	if err != nil {
-		return fmt.Errorf("init metrics: %w", err)
-	}
 
 	metricsSrv := metrics.NewServer(cfg.Metrics.Addr(), reg, logger)
 	metricsSrv.Start()
@@ -91,7 +87,7 @@ func run(cfgPath string) error {
 	}
 	defer sub.Close()
 
-	consumer := orchestration.NewConsumer(repo, orchestration.ConsumerConfig{
+	consumer := marbl.NewConsumer(repo, marbl.ConsumerConfig{
 		RateLimit: cfg.Consumer.RateLimit,
 		RateBurst: cfg.Consumer.RateBurst,
 		Logger:    logger,
@@ -102,7 +98,6 @@ func run(cfgPath string) error {
 
 		OnDone: func(taskType int, value int) {
 			consumerMetrics.TasksProcessing.Dec()
-			prodMetrics.TasksReceived.Dec()
 			consumerMetrics.TasksDone.Inc()
 			consumerMetrics.TasksProcessedByType.
 				WithLabelValues(fmt.Sprintf("%d", taskType)).Inc()

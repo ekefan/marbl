@@ -12,13 +12,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// ProducerMetrics holds all prometheus instruments for the producer service.
 type ProducerMetrics struct {
-	// TasksProduced is the total number of tasks generated since startup.
 	TasksProduced prometheus.Counter
 }
 
-// ConsumerMetrics holds all prometheus instruments for the consumer service.
 type ConsumerMetrics struct {
 	// TasksProcessing is the current number of tasks in processing state.
 	TasksProcessing prometheus.Gauge
@@ -33,7 +30,6 @@ type ConsumerMetrics struct {
 	ValueSumByType *prometheus.GaugeVec
 }
 
-// NewProducerMetrics creates and registers producer metrics with the given registry.
 func NewProducerMetrics(reg prometheus.Registerer) (*ProducerMetrics, error) {
 	m := &ProducerMetrics{
 		TasksProduced: prometheus.NewCounter(prometheus.CounterOpts{
@@ -51,7 +47,6 @@ func NewProducerMetrics(reg prometheus.Registerer) (*ProducerMetrics, error) {
 	return m, nil
 }
 
-// NewConsumerMetrics creates and registers consumer metrics with the given registry.
 func NewConsumerMetrics(reg prometheus.Registerer) (*ConsumerMetrics, error) {
 	m := &ConsumerMetrics{
 		TasksProcessing: prometheus.NewGauge(prometheus.GaugeOpts{

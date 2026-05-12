@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -110,11 +111,11 @@ func TestSubscriber_NacksAndRequeuesOnHandlerError(t *testing.T) {
 		t.Fatalf("Publish() error: %v", err)
 	}
 
-	attempts := 0
+	var attempts atomic.Int32
 	handler := contracts.TaskHandler(func(ctx context.Context, _ *tasks.Task) error {
-		attempts++
-		if attempts < 3 {
-			return fmt.Errorf("simulated failure attempt %d", attempts)
+		n := attempts.Add(1)
+		if n < 3 {
+			return fmt.Errorf("simulated failure attempt %d", n)
 		}
 		return nil
 	})
@@ -127,9 +128,9 @@ func TestSubscriber_NacksAndRequeuesOnHandlerError(t *testing.T) {
 	for {
 		select {
 		case <-deadline:
-			t.Fatalf("timed out: handler only called %d times (expected 3)", attempts)
+			t.Fatalf("timed out: handler only called %d times (expected 3)", attempts.Load())
 		default:
-			if attempts >= 3 {
+			if attempts.Load() >= 3 {
 				return
 			}
 			time.Sleep(100 * time.Millisecond)
