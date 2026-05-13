@@ -216,7 +216,6 @@ set `GOMEMLIMIT` to ~75% of available container memory. This prevents OOM
 without paying the CPU cost of an artificially low GC threshold.
 
 ```yaml
-# docker-compose environment:
 environment:
   GOMEMLIMIT: 200MiB
   GOGC: "100"
