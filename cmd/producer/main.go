@@ -16,6 +16,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
+	_ "github.com/joho/godotenv/autoload"
+
 	"github.com/ekefan/marbl/application"
 	"github.com/ekefan/marbl/config"
 	"github.com/ekefan/marbl/infrastructure/postgres"
