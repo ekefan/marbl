@@ -1,0 +1,186 @@
+{
+  "title": "Marbl Runtime & Profiling",
+  "uid": "marbl-runtime",
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "schemaVersion": 38,
+  "tags": ["marbl", "runtime", "pprof", "golang"],
+  "timezone": "browser",
+
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Go Goroutines",
+      "description": "Current number of goroutines",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "go_goroutines",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+
+    {
+      "id": 2,
+      "title": "Heap Allocated Memory",
+      "description": "Bytes allocated and still in use",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "go_memstats_heap_alloc_bytes",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    },
+
+    {
+      "id": 3,
+      "title": "Heap Objects",
+      "description": "Number of allocated heap objects",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "go_memstats_heap_objects",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "title": "GC Cycles / sec",
+      "description": "Garbage collection frequency",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(go_gc_duration_seconds_count[1m])",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "GC Pause Duration",
+      "description": "Time spent in garbage collection",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(go_gc_duration_seconds_sum[1m])",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "CPU Usage",
+      "description": "CPU seconds consumed per second",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total[1m])",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "Resident Memory (RSS)",
+      "description": "Physical memory used by process",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    },
+
+    {
+      "id": 8,
+      "title": "Open File Descriptors",
+      "description": "Current number of open file descriptors",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "process_open_fds",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+
+    {
+      "id": 9,
+      "title": "Runtime Memory Classes",
+      "description": "Breakdown of Go runtime memory usage",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 10 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "go_memstats_stack_inuse_bytes",
+          "legendFormat": "stack"
+        },
+        {
+          "expr": "go_memstats_mspan_inuse_bytes",
+          "legendFormat": "mspan"
+        },
+        {
+          "expr": "go_memstats_mcache_inuse_bytes",
+          "legendFormat": "mcache"
+        },
+        {
+          "expr": "go_memstats_heap_inuse_bytes",
+          "legendFormat": "heap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    }
+
+  ]
+}
