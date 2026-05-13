@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DB_URL="${DB_URL:-postgres://marbl:marbl@localhost:5432/marbl?sslmode=disable}"
-MIGRATIONS_PATH="${MIGRATIONS_PATH:-storage/migrations}"
+MIGRATIONS_PATH="${MIGRATIONS_PATH:-infrastructure/postgres/migrations}"
 
 CMD="${1:-up}"
 VERSION="${2:-}"
