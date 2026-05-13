@@ -10,11 +10,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-marbl}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -27,61 +22,52 @@ services:
       - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   producer:
     build:
       context: .
       dockerfile: cmd/producer/Dockerfile
       args:
-        VERSION: ${VERSION:-dev}
+        VERSION: ${VERSION:-v1.0.0}
     restart: unless-stopped
+    env_file:
+      - .env.dev
+    command: ["./producer", "-config", "/app/config.yaml"]
     ports:
-      - "9091:9091" # metrics
-      - "6061:6061" # pprof
+      - "9091:9091"
+      - "6061:6061"   # pprof
     volumes:
       - ./cmd/producer/config.yaml:/app/config.yaml:ro
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9091/metrics"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - postgres
+      - rabbitmq
 
   consumer:
     build:
       context: .
       dockerfile: cmd/consumer/Dockerfile
       args:
-        VERSION: ${VERSION:-dev}
+        VERSION: ${VERSION:-v1.0.0}
     restart: unless-stopped
+    env_file:
+      - .env.dev
+    command: ["./consumer", "-config", "/app/config.yaml"]
     ports:
-      - "9092:9092" # metrics
-      - "6062:6062" # pprof
+      - "9092:9092"
+      - "6062:6062"
     volumes:
       - ./cmd/consumer/config.yaml:/app/config.yaml:ro
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9092/metrics"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - postgres
+      - rabbitmq
 
   prometheus:
     image: prom/prometheus:v2.51.0
     restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
     ports:
       - "9090:9090"
     volumes:
@@ -91,19 +77,16 @@ services:
   grafana:
     image: grafana/grafana:10.4.0
     restart: unless-stopped
-    ports:
-      - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      prometheus:
-        condition: service_started
 
 volumes:
   postgres_data:
