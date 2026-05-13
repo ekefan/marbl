@@ -19,8 +19,6 @@ func newRegistry() *prometheus.Registry {
 	return prometheus.NewRegistry()
 }
 
-// --- ProducerMetrics ---
-
 func TestProducerMetrics_Registers(t *testing.T) {
 	reg := newRegistry()
 	m, err := metrics.NewProducerMetrics(reg)
@@ -44,7 +42,7 @@ func TestProducerMetrics_CounterIncrements(t *testing.T) {
 	}
 
 	for _, mf := range gathered {
-		if mf.GetName() == "marbl_producer_tasks_produced_total" {
+		if mf.GetName() == "marbl_producer_tasks_received_total" {
 			got := mf.GetMetric()[0].GetCounter().GetValue()
 			if got != 3 {
 				t.Errorf("counter value: got %.0f, want 3", got)
@@ -52,7 +50,7 @@ func TestProducerMetrics_CounterIncrements(t *testing.T) {
 			return
 		}
 	}
-	t.Error("metric marbl_producer_tasks_produced_total not found")
+	t.Error("metric marbl_received_tasks_produced_total not found")
 }
 
 func TestProducerMetrics_DoubleRegisterFails(t *testing.T) {
@@ -68,7 +66,6 @@ func TestProducerMetrics_DoubleRegisterFails(t *testing.T) {
 	}
 }
 
-// --- ConsumerMetrics ---
 
 func TestConsumerMetrics_Registers(t *testing.T) {
 	reg := newRegistry()
@@ -207,7 +204,7 @@ func TestMetricsServer_ExposesMetricsEndpoint(t *testing.T) {
 	}
 
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "marbl_producer_tasks_produced_total") {
+	if !strings.Contains(string(body), "marbl_producer_tasks_received_total") {
 		t.Error("response does not contain expected metric name")
 	}
 
