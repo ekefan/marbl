@@ -1,40 +1,50 @@
-schema_init_tasks:
-	migrate create -ext sql -dir /storage/migrations -seq init_task
-schema_add_comments:
-	migrate create -ext sql -dir storage/migrations -seq add_comment
-sqlc-gen:
-	sqlc generate
-
-mock_publisher_contract:
-	mockgen -source=comm_channel/publisher.go -destination=internal/mocks/publisher.go -package=mocks
-#
-.PHONY: all build test lint generate migrate-up migrate-down clean help
-
-# ── Variables ─────────────────────────────────────────────────────────────────
+.PHONY: \
+	all \
+	build \
+	build-producer \
+	build-consumer \
+	version-check \
+	mock-publisher-contract \
+	sqlc-generate \
+	test \
+	test-short \
+	test-cover \
+	lint \
+	migrate-status \
+	schema-init-tasks \
+	schema-add-comments \
+	docker-up \
+	docker-down \
+	docker-consumer-logs \
+	docker-producer-logs \
+	docker-clean \
+	flamegraph-producer \
+	flamegraph-consumer \
+	profile-producer-mem \
+	profile-consumer-mem \
+	trace-producer \
+	clean \
+	help
 
 MODULE      := github.com/ekefan/marbl
-VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION     := v1.0.0
 LDFLAGS     := -ldflags="-s -w -X main.version=$(VERSION)"
 
 PRODUCER_BIN := bin/producer
 CONSUMER_BIN := bin/consumer
 
-MIGRATE_DSN  ?= postgres://marbl:marbl@localhost:5432/marbl?sslmode=disable
-MIGRATIONS   := storage/migrations
-
-# ── Default ───────────────────────────────────────────────────────────────────
+MIGRATE_DSN ?= postgres://marbl:marbl@localhost:5432/marbl?sslmode=disable
+MIGRATIONS  := infrastructure/postgres/migrations
 
 all: lint test build
 
 build: build-producer build-consumer
 
 build-producer:
-	@echo " building producer (version=$(VERSION))"
 	@mkdir -p bin
 	go build $(LDFLAGS) -o $(PRODUCER_BIN) ./cmd/producer
 
 build-consumer:
-	@echo " building consumer (version=$(VERSION))"
 	@mkdir -p bin
 	go build $(LDFLAGS) -o $(CONSUMER_BIN) ./cmd/consumer
 
@@ -42,76 +52,95 @@ version-check: build
 	@echo "producer: $$(./$(PRODUCER_BIN) -version)"
 	@echo "consumer: $$(./$(CONSUMER_BIN) -version)"
 
-# ── Generate ──────────────────────────────────────────────────────────────────
+mock-publisher-contract:
+	mockgen \
+		-source=contracts/task_publisher.go \
+		-destination=internal/mocks/task_publisher.go \
+		-package=mocks
 
-generate:
-	@echo " running sqlc generate"
-	cd storage && sqlc generate
-	@echo " running go generate"
-	go generate ./...
+mock-contracts:
+	mockgen \
+		-destination=internal/mocks/contracts.go \
+		-package=mocks \
+		github.com/ekefan/marbl/contracts \
+		TaskPublisher,QueueDepthChecker,TaskSubscriber
 
-# ── Test ──────────────────────────────────────────────────────────────────────
+sqlc-generate:
+	sqlc generate
 
 test:
-	@echo " running all tests"
 	go test -v -race -count=1 -timeout=120s ./...
 
 test-short:
-	@echo " running unit tests only (no containers)"
 	go test -v -race -count=1 -short ./...
 
 test-cover:
-	@echo " running tests with coverage"
 	go test -race -count=1 -timeout=120s -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
-	@echo " coverage report: coverage.html"
-
-# ── Lint ──────────────────────────────────────────────────────────────────────
 
 lint:
-	@echo "Running go vet"
 	go vet ./...
-	@echo "Running staticcheck"
-	staticcheck ./... 2>/dev/null || echo "  (staticcheck not installed — skipping)"
-
-# ── Migration ─────────────────────────────────────────────────────────────────
-
-migrate-up:
-	@echo " running migrations up"
-	migrate -path $(MIGRATIONS) -database "$(MIGRATE_DSN)" up
-
-migrate-down:
-	@echo " rolling back last migration"
-	migrate -path $(MIGRATIONS) -database "$(MIGRATE_DSN)" down 1
+	staticcheck ./... 2>/dev/null || true
 
 migrate-status:
-	@echo " migration status"
 	migrate -path $(MIGRATIONS) -database "$(MIGRATE_DSN)" version
 
-# ── Docker ────────────────────────────────────────────────────────────────────
+schema-init-tasks:
+	migrate create -ext sql -dir $(MIGRATIONS) -seq init_task
+
+schema-add-comments:
+	migrate create -ext sql -dir $(MIGRATIONS) -seq add_comment
 
 docker-up:
-	@echo " starting full stack"
 	docker compose up --build -d
 
 docker-down:
 	docker compose down
 
-docker-logs:
-	docker compose logs -f producer consumer
+docker-consumer-logs:
+	docker compose logs -f consumer
+
+docker-producer-logs:
+	docker compose logs -f producer
 
 docker-clean:
 	docker compose down -v --remove-orphans
 
-# ── Profiling ─────────────────────────────────────────────────────────────────
+docker-infra-up:
+	docker compose up -d postgres rabbitmq
+
+docker-infra-down:
+	docker compose stop postgres rabbitmq
+
+compose-local:
+	docker compose -p marbl-local -f compose.local.yml up -d
+compose-local-down:
+	docker compose -p marbl-local -f compose.local.yml down
+
+compose-dev-down:
+	docker compose -p marbl-dev -f compose.dev.yml down
+
+compose-dev-infra-up:
+	docker compose -p marbl-dev -f compose.dev.yml up  -d postgres rabbitmq prometheus grafana
+	@echo "Waiting for Postgres..."
+	@until docker exec $$(docker ps -q -f name=marbl-dev-postgres-1) \
+		pg_isready -U marbl; do \
+		echo "waiting..."; sleep 2; \
+	done
+	@echo "Running migrations..."
+	DB_URL=$(POSTGRES_DSN) ./migrate.sh up
+
+compose-dev-app-up-build:
+	docker compose -p marbl-dev -f compose.dev.yml up -d producer consumer --build
+
+compose-dev-app-up:
+	docker compose -p marbl-dev -f compose.dev.ymlup -f compose.dev.yml -d producer consumer
 
 flamegraph-producer:
-	@echo " generating flamegraph for producer (30s)"
 	curl -s "http://localhost:6061/debug/pprof/profile?seconds=30" -o producer.prof
 	go tool pprof -http=:8080 producer.prof
 
 flamegraph-consumer:
-	@echo " generating flamegraph for consumer (30s)"
 	curl -s "http://localhost:6062/debug/pprof/profile?seconds=30" -o consumer.prof
 	go tool pprof -http=:8080 consumer.prof
 
@@ -127,29 +156,27 @@ trace-producer:
 	curl -s "http://localhost:6061/debug/pprof/trace?seconds=10" -o producer.trace
 	go tool trace producer.trace
 
-# ── Clean ─────────────────────────────────────────────────────────────────────
-
 clean:
 	rm -rf bin/ coverage.out coverage.html *.prof *.heap *.trace
 
-# ── Help ──────────────────────────────────────────────────────────────────────
-
 help:
-	@echo ""
-	@echo "  make build                build both binaries"
-	@echo "  make test                 run all tests (requires docker)"
-	@echo "  make test-short           run unit tests only"
-	@echo "  make test-cover           tests + coverage.html"
-	@echo "  make lint                 go vet + staticcheck"
-	@echo "  make generate             sqlc + go generate"
-	@echo "  make migrate-up           apply pending migrations"
-	@echo "  make migrate-down         roll back last migration"
-	@echo "  make migrate-status       show current migration version"
-	@echo "  make docker-up            start full stack"
-	@echo "  make docker-down          stop full stack"
-	@echo "  make docker-clean         stop + remove volumes"
-	@echo "  make flamegraph-producer  capture + open flamegraph"
-	@echo "  make flamegraph-consumer  capture + open flamegraph"
-	@echo "  make version-check        verify -version on both binaries"
-	@echo "  make clean                remove build artifacts"
-	@echo ""
+	@echo "make build"
+	@echo "make test"
+	@echo "make test-short"
+	@echo "make test-cover"
+	@echo "make lint"
+	@echo "make sqlc-generate"
+	@echo "make migrate-status"
+	@echo "make schema-init-tasks"
+	@echo "make schema-add-comments"
+	@echo "make mock-publisher-contract"
+	@echo "make mock-contracts"
+	@echo "make docker-up"
+	@echo "make docker-down"
+	@echo "make docker-clean"
+	@echo "make flamegraph-producer"
+	@echo "make flamegraph-consumer"
+	@echo "make profile-producer-mem"
+	@echo "make profile-consumer-mem"
+	@echo "make trace-producer"
+	@echo "make clean"
