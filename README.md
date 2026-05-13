@@ -57,6 +57,9 @@ export PATH="$PATH:$(go env GOPATH)/bin"
               │    :3000           │
               └────────────────────┘
 ```
+## Communication Protocol Choice – RabbitMQ
+
+I chose RabbitMQ as the communication protocol between the producer and consumer because the system is designed as an asynchronous task pipeline where producers should not depend on consumer availability or processing speed. RabbitMQ naturally supports decoupling through message queues, allowing the producer to continue generating tasks while the consumer processes them at its own rate. It also provides built-in buffering, acknowledgements, and requeueing, which simplifies handling failures and ensures tasks are not lost while still enabling controlled backlog limits and rate-based consumption. Compared to HTTP or gRPC, which are more request-response and tightly coupled, RabbitMQ better fits the need for independent scaling and resilience. I did not consider ZeroMQ for this implementation as it was outside the scope of my familiarity and would have required additional learning time and risk for this take-home exercise.
 ---
 
 ## Environment Variables
