@@ -91,11 +91,12 @@ schema-init-tasks:
 schema-add-comments:
 	migrate create -ext sql -dir $(MIGRATIONS) -seq add_comment
 
-docker-up:
-	docker compose up --build -d
 
-docker-down:
-	docker compose down
+go-run-consumer:
+	go run cmd/consumer/main.go --config cmd/consumer/config.yaml
+
+go-run-producer:
+	go run cmd/consumer/main.go --config cmd/consumer/config.yaml
 
 docker-consumer-logs:
 	docker compose logs -f consumer
@@ -105,12 +106,6 @@ docker-producer-logs:
 
 docker-clean:
 	docker compose down -v --remove-orphans
-
-docker-infra-up:
-	docker compose up -d postgres rabbitmq
-
-docker-infra-down:
-	docker compose stop postgres rabbitmq
 
 compose-local:
 	docker compose -p marbl-local -f compose.local.yml up -d
